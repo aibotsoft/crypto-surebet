@@ -63,7 +63,9 @@ func (s *Store) Close() error {
 	return db.Close()
 }
 func (s *Store) Migrate() error {
-	err := s.db.AutoMigrate(
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+	defer cancel()
+	err := s.db.WithContext(ctx).AutoMigrate(
 		&Account{},
 		&Balance{},
 		&Order{},
