@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	log.Info("start_service", zap.String("version", version.Version), zap.Any("config", cfg))
+	log.Info("start_service", zap.String("version", version.Version), zap.String("build_date", version.BuildDate), zap.Any("config", cfg))
 	ctx, cancel := context.WithCancel(context.Background())
 	sto, err := store.NewStore(cfg, log, ctx)
 	if err != nil {
@@ -27,10 +27,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	//err = sto.Prefetch()
-	//if err != nil {
-	//	panic(err)
-	//}
 	p, err := placer.NewPlacer(cfg, log, ctx, sto)
 	if err != nil {
 		panic(err)
