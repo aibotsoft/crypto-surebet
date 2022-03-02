@@ -1,0 +1,5 @@
+play
+.idea
+.env
+*.yaml
+dist
