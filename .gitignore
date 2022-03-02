@@ -1,5 +1,5 @@
 play
 .idea
 .env
-*.yaml
+crypto-surebet.yaml
 dist
