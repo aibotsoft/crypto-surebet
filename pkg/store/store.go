@@ -63,7 +63,7 @@ func (s *Store) Close() error {
 	return db.Close()
 }
 func (s *Store) Migrate() error {
-	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, s.cfg.Postgres.Timeout)
 	defer cancel()
 	err := s.db.WithContext(ctx).AutoMigrate(
 		&Account{},
@@ -81,20 +81,32 @@ func (s *Store) Migrate() error {
 }
 
 func (s *Store) SaveAccount(resp *Account) error {
-	return s.db.Save(resp).Error
+	ctx, cancel := context.WithTimeout(s.ctx, s.cfg.Postgres.Timeout)
+	defer cancel()
+	return s.db.WithContext(ctx).Save(resp).Error
 }
 
 func (s *Store) SaveBalances(balanceList *[]Balance) error {
-	return s.db.Save(balanceList).Error
+	ctx, cancel := context.WithTimeout(s.ctx, s.cfg.Postgres.Timeout)
+	defer cancel()
+	return s.db.WithContext(ctx).Save(balanceList).Error
+}
+
+func (s *Store) SaveMarkets(data *[]Market) error {
+	ctx, cancel := context.WithTimeout(s.ctx, s.cfg.Postgres.Timeout)
+	defer cancel()
+	return s.db.WithContext(ctx).Save(data).Error
 }
 
 func (s *Store) SaveOrders(apiOrderList []ftxapi.Order) error {
+	ctx, cancel := context.WithTimeout(s.ctx, s.cfg.Postgres.Timeout)
+	defer cancel()
 	var data []Order
 	err := copier.Copy(&data, apiOrderList)
 	if err != nil {
 		return err
 	}
-	return s.db.Clauses(clause.OnConflict{
+	return s.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
 			"status",
@@ -118,10 +130,6 @@ func (s *Store) SaveOrder(apiOrder interface{}) error {
 	return s.db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&order).Error
 }
 
-func (s *Store) SaveMarkets(data *[]Market) error {
-	return s.db.Save(data).Error
-}
-
 func (s *Store) SaveSurebet(sb *Surebet) error {
 	return s.db.Create(sb).Error
 }
@@ -132,7 +140,6 @@ func (s *Store) SaveFills(data *Fills) error {
 
 func (s *Store) SaveHeal(data *Heal) error {
 	return s.db.Clauses(clause.OnConflict{UpdateAll: true}).Create(data).Error
-
 }
 
 //func (s *Store) GetWallet(symbol string) (base *Wallet, quote *Wallet) {

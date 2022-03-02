@@ -31,12 +31,12 @@ type Config struct {
 	Binance struct {
 		Name string `json:"name" default:"binance"`
 		//WsHost string `default:"wss://stream.binance.com:9443/ws"`
-		WsHost string `json:"wsHost" default:"wss://stream.binance.com:9443/stream?streams="`
+		WsHost string `json:"ws_host" default:"wss://stream.binance.com:9443/stream?streams="`
 		Debug  bool   `json:"debug" default:"false"`
 	} `json:"binance"`
 	Ftx struct {
 		Name       string `json:"name" default:"ftx"`
-		WsHost     string `json:"wsHost" default:"wss://ftx.com/ws/"`
+		WsHost     string `json:"ws_host" default:"wss://ftx.com/ws/"`
 		Key        string `json:"key"`
 		Secret     string `json:"secret"`
 		SubAccount string `json:"sub_account"`
@@ -46,12 +46,13 @@ type Config struct {
 		Port string `json:"port"`
 	} `json:"nats"`
 	Ws struct {
-		ConnTimeout time.Duration `json:"connTimeout" default:"5s"`
+		ConnTimeout time.Duration `json:"conn_timeout" default:"5s"`
 	} `json:"ws"`
 	//Markets  []string
 	Postgres struct {
-		DSN      string `json:"dsn"`
-		LogLevel string `json:"log_level"`
+		DSN      string        `json:"dsn"`
+		LogLevel string        `json:"log_level"`
+		Timeout  time.Duration `json:"timeout" default:"5s"`
 	} `json:"postgres"`
 }
 
