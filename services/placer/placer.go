@@ -288,7 +288,7 @@ func (p *Placer) GetOrdersHistory() error {
 	//		p.log.Error("save_order_error", zap.Error(err), zap.Any("order", resp[i]))
 	//	}
 	//}
-	//var data []store.FtxOrder
+	//var data []store.Order
 	//err = copier.Copy(&data, resp)
 	//if err != nil {
 	//	return err
@@ -328,7 +328,7 @@ func (p *Placer) GetOrdersHistory() error {
 //	if err != nil {
 //		return err
 //	}
-//	var data []store.FtxOrder
+//	var data []store.Order
 //	err = copier.Copy(&data, resp)
 //	if err != nil {
 //		return err

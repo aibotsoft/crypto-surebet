@@ -66,7 +66,7 @@ func (s *Store) Migrate() error {
 	err := s.db.AutoMigrate(
 		&Account{},
 		&Balance{},
-		&FtxOrder{},
+		&Order{},
 		&Market{},
 		&Fills{},
 		&Surebet{},
@@ -87,7 +87,7 @@ func (s *Store) SaveBalances(balanceList *[]Balance) error {
 }
 
 func (s *Store) SaveOrders(apiOrderList []ftxapi.Order) error {
-	var data []FtxOrder
+	var data []Order
 	err := copier.Copy(&data, apiOrderList)
 	if err != nil {
 		return err
@@ -105,7 +105,7 @@ func (s *Store) SaveOrders(apiOrderList []ftxapi.Order) error {
 }
 
 func (s *Store) SaveOrder(apiOrder interface{}) error {
-	var order FtxOrder
+	var order Order
 	err := copier.Copy(&order, apiOrder)
 	if err != nil {
 		return fmt.Errorf("copy_order_error: %w", err)

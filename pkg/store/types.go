@@ -101,7 +101,7 @@ const (
 //	SbID int64 `json:"sb_id" gorm:"index"`
 //}
 
-type FtxOrder struct {
+type Order struct {
 	CreatedAt     time.Time   `json:"createdAt" gorm:"not null"`
 	UpdatedAt     time.Time   `json:"updated_at" gorm:"not null"`
 	Market        string      `json:"market" gorm:"not null"`
