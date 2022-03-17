@@ -38,7 +38,7 @@ jobs:
           echo ::set-output name=LDFLAGS::${LDFLAGS}
           echo ::set-output name=VERSION::${VERSION}
       - name: build
-        run: CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -ldflags=${{ steps.prep.outputs.LDFLAGS }} -o app main.go
+        run: CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -ldflags="${{ steps.prep.outputs.LDFLAGS }}" -o app main.go
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
       - name: Login to GitHub Container Registry
