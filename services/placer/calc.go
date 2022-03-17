@@ -161,13 +161,13 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	sb.PlaceParams.PostOnly = false
 	sb.PlaceParams.ClientID = fmt.Sprintf("%d:%s", sb.ID, BET)
 
-	var WasIdle bool
-	var IdleTime time.Duration
+	//var WasIdle bool
+	//var IdleTime time.Duration
 	trace := &httptrace.ClientTrace{
 		GotConn: func(connInfo httptrace.GotConnInfo) {
 			sb.ConnReused = connInfo.Reused
-			WasIdle = connInfo.WasIdle
-			IdleTime = connInfo.IdleTime
+			//WasIdle = connInfo.WasIdle
+			//IdleTime = connInfo.IdleTime
 		},
 	}
 	sb.BeginPlace = time.Now().UnixNano()

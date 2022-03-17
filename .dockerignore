@@ -2,4 +2,4 @@
 play
 dist
 *.yaml
-
+migrations
