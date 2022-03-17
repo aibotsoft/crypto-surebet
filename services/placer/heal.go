@@ -59,7 +59,11 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 	h.PlaceParams.PostOnly = true
 	h.PlaceParams.ClientID = fmt.Sprintf("%d:%s", sb.ID, HEAL)
 	p.log.Info("begin_heal",
-		zap.Any("heal", h),
+		zap.Any("place", h.PlaceParams),
+		zap.Any("filled_size", h.FilledSize),
+		zap.Any("avg_fill_price", h.AvgFillPrice),
+		zap.Any("fee_part", h.FeePart),
+		zap.Any("profit_part", h.ProfitPart),
 	)
 	for i := 0; i < 2; i++ {
 		resp, err := p.PlaceOrder(p.ctx, h.PlaceParams)
