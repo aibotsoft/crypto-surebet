@@ -160,15 +160,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	sb.PlaceParams.Ioc = true
 	sb.PlaceParams.PostOnly = false
 	sb.PlaceParams.ClientID = fmt.Sprintf("%d:%s", sb.ID, BET)
-	//clientID, err := json.Marshal(store.OrderInfo{SbID: sb.ID})
-	//if err != nil {
-	//	p.log.Warn("marshal_error",
-	//		zap.Error(err),
-	//		zap.Any("sb", sb),
-	//		zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
-	//	)
-	//}
-	//sb.PlaceParams.ClientID = BET
+
 	var WasIdle bool
 	var IdleTime time.Duration
 	trace := &httptrace.ClientTrace{
@@ -196,14 +188,14 @@ func (p *Placer) Calc(sb *store.Surebet) {
 
 	placeCounter.Inc()
 	p.log.Info("success",
+		zap.Any("sb", sb),
 		zap.Int64("place_count", placeCounter.Load()),
 		zap.Int64("fills_count", fillsCounter.Load()),
-		zap.Any("sb", sb),
 		zap.Duration("place_elapsed", time.Duration(sb.Done-sb.BeginPlace)),
-		zap.Bool("reused", sb.ConnReused),
-		zap.Bool("was_idle", WasIdle),
-		zap.Duration("idle_time", IdleTime),
-		zap.Int("goroutine", runtime.NumGoroutine()),
+		//zap.Bool("reused", sb.ConnReused),
+		//zap.Bool("was_idle", WasIdle),
+		//zap.Duration("idle_time", IdleTime),
+		//zap.Int("goroutine", runtime.NumGoroutine()),
 	)
 	if order != nil {
 		if sb.PlaceParams.Side == store.SideSell {
@@ -216,126 +208,3 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	}
 	p.checkBalanceCh <- true
 }
-
-//if size.LessThan(sb.Market.MinProvideSize) {
-//p.log.Debug("not_enough_quote_balance",
-//zap.String("symbol", sb.FtxTicker.Symbol),
-//zap.Any("side", sb.PlaceParams.Side),
-//zap.Any("size", size),
-//zap.Any("min_provide", sb.Market.MinProvideSize),
-//zap.Any("volume", volume),
-//zap.Any("quote_free", sb.QuoteBalance.Free),
-//zap.Any("profit", sb.Profit),
-////zap.Any("round_size", size.Div(sb.Market.MinProvideSize).Floor().Mul(sb.Market.MinProvideSize)),
-//zap.Any("spread", sb.FtxSpread),
-////zap.Any("quote_balance", sb.QuoteBalance),
-//zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
-//zap.Int("goroutine", runtime.NumGoroutine()),
-//)
-//return
-//}
-//p.log.Info("",
-//	zap.String("diff", fmt.Sprintf("%.3f", buyDiff)),
-//	zap.Int("count", p.count),
-//	zap.Int64("buy_count", base.BuyCount),
-//	zap.String("buyProfit", fmt.Sprintf("%.3f", buyProfit)),
-//	zap.String("buySellCoef", fmt.Sprintf("%.3f", buySellCoef)),
-//	zap.Float64("fxt_ask", ftx.AskPrice),
-//	zap.Float64("bin_bid", bin.BidPrice),
-//	zap.String(base.Coin, F4toS(base.Amount)),
-//	zap.Float64("USDT", quote.Amount),
-//	//zap.String("s", symbol),
-//	zap.Duration("btd", time.Duration(ftx.ReceiveTime-bin.ReceiveTime)),
-//	//zap.Int64("fxt_time", ft.ReceiveTime),
-//	//zap.String("profitCoef", fmt.Sprintf("%.4f", profitCoef)),
-//	zap.Int64("buySellDiff", buySellDiff),
-//	zap.Float64("buy_avg", base.BuyAvg()),
-//	zap.Float64("profit", base.Profit()),
-//	zap.String("profit_avg", fmt.Sprintf("%.3f", base.ProfitAvg())),
-//	zap.String("sum", fmt.Sprintf("%.4f", p.store.PortfolioSum())),
-//	//zap.Duration("elapsed", time.Since(start)),
-//)
-
-//buySellDiff := base.BuyCount - base.SellCount
-//buySellCoef := float64(buySellDiff) / 100.0
-//base.BidPrice = ftx.BidPrice
-
-//if sb.BuyProfit > p.cfg.Service.MinProfit+buySellCoef {
-//	quote.Amount = quote.Amount - 1
-//	base.Orders = append(base.Orders, store.Order{
-//		Market:   ftx.Symbol,
-//		Side:     "buy",
-//		Price:    ftx.AskPrice,
-//		Type:     "market",
-//		Size:     1 / ftx.AskPrice,
-//		Profit:   sb.BuyProfit,
-//		TimeDiff: time.Duration(ftx.ReceiveTime - bin.ReceiveTime),
-//	})
-//	base.BuyCount++
-//	base.Amount = base.Amount + 1/ftx.AskPrice
-//	base.LastBet = ftx.ReceiveTime
-//	p.store.SaveWallet(base, quote)
-//
-//	p.log.Info("buy ",
-//		zap.String("diff", fmt.Sprintf("%.3f", buyDiff)),
-//		zap.Int("count", p.count),
-//		zap.Int64("buy_count", base.BuyCount),
-//		zap.String("buyProfit", fmt.Sprintf("%.3f", buyProfit)),
-//		zap.String("buySellCoef", fmt.Sprintf("%.3f", buySellCoef)),
-//		zap.Float64("fxt_ask", ftx.AskPrice),
-//		zap.Float64("bin_bid", bin.BidPrice),
-//		zap.String(base.Coin, F4toS(base.Amount)),
-//		zap.Float64("USDT", quote.Amount),
-//		//zap.String("s", symbol),
-//		zap.Duration("btd", time.Duration(ftx.ReceiveTime-bin.ReceiveTime)),
-//		//zap.Int64("fxt_time", ft.ReceiveTime),
-//		//zap.String("profitCoef", fmt.Sprintf("%.4f", profitCoef)),
-//		zap.Int64("buySellDiff", buySellDiff),
-//		zap.Float64("buy_avg", base.BuyAvg()),
-//		zap.Float64("profit", base.Profit()),
-//		zap.String("profit_avg", fmt.Sprintf("%.3f", base.ProfitAvg())),
-//		zap.String("sum", fmt.Sprintf("%.4f", p.store.PortfolioSum())),
-//		//zap.Duration("elapsed", time.Since(start)),
-//	)
-//	return
-//}
-//if sb.SellProfit > p.cfg.Service.MinProfit-buySellCoef {
-//	quote.Amount = quote.Amount + 1
-//	base.Orders = append(base.Orders, store.Order{
-//		Market:   ftx.Symbol,
-//		Side:     "sell",
-//		Price:    ftx.BidPrice,
-//		Type:     "market",
-//		Size:     1 / ftx.BidPrice,
-//		Profit:   sb.SellProfit,
-//		TimeDiff: time.Duration(ftx.ReceiveTime - bin.ReceiveTime),
-//	})
-//	base.SellCount++
-//	base.Amount = base.Amount - 1/ftx.BidPrice
-//	base.LastBet = ftx.ReceiveTime
-//	p.store.SaveWallet(base, quote)
-//
-//	p.log.Info("sell",
-//		zap.String("diff", fmt.Sprintf("%.3f", sellDiff)),
-//		zap.Int("count", p.count),
-//		zap.Int64("sell_count", base.SellCount),
-//
-//		zap.String("sellProfit", fmt.Sprintf("%.3f", sellProfit)),
-//		zap.String("buySellCoef", fmt.Sprintf("%.3f", buySellCoef)),
-//		zap.Float64("fxt_bid", ftx.BidPrice),
-//		zap.Float64("bin_ask", bin.AskPrice),
-//		zap.String(base.Coin, F4toS(base.Amount)),
-//		zap.Float64("USDT", quote.Amount),
-//		//zap.String("s", symbol),
-//		zap.Duration("btd", time.Duration(ftx.ReceiveTime-bin.ReceiveTime)),
-//		//zap.Int64("fxt_time", ft.ReceiveTime),
-//		//zap.String("profitCoef", fmt.Sprintf("%.4f", profitCoef)),
-//		//zap.String("sum", F3toS(c.SumCalc())),
-//		zap.Int64("buySellDiff", buySellDiff),
-//		zap.Float64("sell_avg", base.SellAvg()),
-//		zap.Float64("profit", base.Profit()),
-//		zap.String("profit_avg", fmt.Sprintf("%.3f", base.ProfitAvg())),
-//		zap.String("sum", fmt.Sprintf("%.4f", p.store.PortfolioSum())),
-//		//zap.Duration("elapsed", time.Since(start)),
-//	)
-//}

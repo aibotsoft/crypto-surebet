@@ -15,13 +15,13 @@ const (
 	HEAL = "h"
 )
 
-//var reverseSideMap = map[string]store.Side{"buy": store.SideSell, "sell": store.SideBuy}
-
 func (p *Placer) heal(order ftxapi.WsOrders) {
 	if strings.Index(*order.ClientID, "h") > 0 {
-		return
-	}
-	if order.FilledSize == 0 {
+		if order.FilledSize != 0 {
+			return
+		}
+		p.log.Error("heal_order_zero", zap.Any("order", order))
+	} else if order.FilledSize == 0 {
 		p.surebetMap.Delete(*order.ClientID)
 		return
 	}
@@ -47,8 +47,6 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 
 	if order.Side == ftxapi.SideSell {
 		h.PlaceParams.Side = store.SideBuy
-		//sb.TargetProfit
-		//price := h.AvgFillPrice.Sub(h.FeePart).Sub(h.ProfitPart)
 		h.PlaceParams.Price = h.AvgFillPrice.Mul(h.FilledSize).Sub(h.FeePart).Sub(h.ProfitPart).Div(h.PlaceParams.Size)
 	} else {
 		h.PlaceParams.Side = store.SideSell
@@ -60,32 +58,31 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 	h.PlaceParams.Ioc = false
 	h.PlaceParams.PostOnly = true
 	h.PlaceParams.ClientID = fmt.Sprintf("%d:%s", sb.ID, HEAL)
-	h.Done = time.Now().UnixNano()
 	p.log.Info("begin_heal",
-		//zap.Any("order", order),
-		zap.Any("feePart", h.FeePart),
-		zap.Any("profitPart", h.ProfitPart),
 		zap.Any("heal", h),
 	)
-
-	resp, err := p.PlaceOrder(p.ctx, h.PlaceParams)
-	if err != nil {
-		p.log.Warn("heal_place_error",
-			zap.Error(err),
-			//zap.Any("sb", sb),
-			zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
-		)
-		return
+	for i := 0; i < 2; i++ {
+		resp, err := p.PlaceOrder(p.ctx, h.PlaceParams)
+		if err != nil {
+			p.log.Error("heal_place_error",
+				zap.Error(err),
+				zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
+			)
+			h.ErrorMsg = ftxapi.StringPointer(err.Error())
+		}
+		if resp != nil {
+			h.OrderID = resp.ID
+			break
+		}
 	}
-	h.OrderID = resp.ID
-	err = p.store.SaveHeal(&h)
+
+	h.Done = time.Now().UnixNano()
+
+	err := p.store.SaveHeal(&h)
 	if err != nil {
 		p.log.Error("save_heal_error", zap.Error(err))
 	}
-	p.log.Info("done_heal")
-	//zap.Any("resp", resp),
-	//zap.Any("feePart", h.FeePart),
-	//zap.Any("profitPart", h.ProfitPart),
-	//zap.Any("heal", h),
-
+	p.log.Info("done_heal",
+		zap.Duration("elapsed", time.Duration(h.Done-h.Start)),
+	)
 }

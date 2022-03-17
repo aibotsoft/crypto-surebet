@@ -19,7 +19,7 @@ import (
 const cryptoSubject = "crypto-surebet"
 
 var d100 = decimal.RequireFromString("100")
-var d20 = decimal.RequireFromString("20")
+var d1 = decimal.RequireFromString("1")
 
 type Placer struct {
 	cfg         *config.Config
@@ -189,7 +189,7 @@ func (p *Placer) PlaceOrder(ctx context.Context, param store.PlaceParamsEmb) (*f
 }
 func (p *Placer) processFills(fills *ftxapi.WsFillsEvent) {
 	fillsCounter.Inc()
-	p.log.Info("fills", zap.Any("", fills))
+	p.log.Info("fills", zap.Any("data", fills.Data))
 	var data store.Fills
 	err := copier.Copy(&data, fills.Data)
 	if err != nil {
@@ -448,6 +448,7 @@ func (p *Placer) saveBalances(data []store.Balance) {
 	p.balanceLock.Lock()
 	defer p.balanceLock.Unlock()
 	var total decimal.Decimal
+	var count decimal.Decimal
 	for _, b := range data {
 		p.balanceMap[b.Coin] = &store.BalanceEmb{
 			Free:     b.Free,
@@ -455,8 +456,19 @@ func (p *Placer) saveBalances(data []store.Balance) {
 			UsdValue: b.UsdValue,
 		}
 		total = total.Add(b.UsdValue)
+		if b.UsdValue.IsZero() || b.Coin == "USD" || b.Coin == "USDT" {
+			continue
+		}
+		count = count.Add(d1)
 	}
-	p.targetAmount = total.Div(decimal.NewFromInt(int64(len(data)))).DivRound(p.placeConfig.MaxStake, 2)
+	p.targetAmount = total.Div(count).DivRound(p.placeConfig.MaxStake, 2)
+	//p.log.Info("balance",
+	//	//zap.Any("targetAmount", p.targetAmount),
+	//	zap.Any("targetAmount", p.targetAmount),
+	//	zap.Any("total", total),
+	//	zap.Any("len(data)", len(data)),
+	//	zap.Any("count", count),
+	//)
 }
 func (p *Placer) saveMarkets(data []store.Market) {
 	p.marketLock.Lock()
