@@ -10,7 +10,6 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
-	"net/http/httptrace"
 	"runtime"
 	"sync"
 	"time"
@@ -362,21 +361,21 @@ func (p *Placer) AccountInfo() error {
 }
 func (p *Placer) GetBalances() error {
 	//start := time.Now()
-	var Reused, WasIdle bool
-	var IdleTime time.Duration
-	trace := &httptrace.ClientTrace{
-		GotConn: func(connInfo httptrace.GotConnInfo) {
-			//fmt.Printf("Got Conn: %+v\n", connInfo)
-			Reused = connInfo.Reused
-			WasIdle = connInfo.WasIdle
-			IdleTime = connInfo.IdleTime
-		},
-		//DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
-		//	fmt.Printf("DNS Info: %+v\n", dnsInfo)
-		//},
-	}
-	ctx := httptrace.WithClientTrace(p.ctx, trace)
-	resp, err := p.client.NewGetBalancesService().Do(ctx)
+	//var Reused, WasIdle bool
+	//var IdleTime time.Duration
+	//trace := &httptrace.ClientTrace{
+	//	GotConn: func(connInfo httptrace.GotConnInfo) {
+	//		//fmt.Printf("Got Conn: %+v\n", connInfo)
+	//		Reused = connInfo.Reused
+	//		WasIdle = connInfo.WasIdle
+	//		IdleTime = connInfo.IdleTime
+	//	},
+	//	//DNSDone: func(dnsInfo httptrace.DNSDoneInfo) {
+	//	//	fmt.Printf("DNS Info: %+v\n", dnsInfo)
+	//	//},
+	//}
+	//ctx := httptrace.WithClientTrace(p.ctx, trace)
+	resp, err := p.client.NewGetBalancesService().Do(p.ctx)
 	if err != nil {
 		return err
 	}
