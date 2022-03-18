@@ -456,7 +456,7 @@ func (p *Placer) saveBalances(data []store.Balance) {
 			UsdValue: b.UsdValue,
 		}
 		total = total.Add(b.UsdValue)
-		if b.UsdValue.IsZero() || b.Coin == "USD" || b.Coin == "USDT" {
+		if b.UsdValue.IsZero() || b.Coin == "USD" {
 			continue
 		}
 		count = count.Add(d1)

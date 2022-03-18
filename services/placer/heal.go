@@ -24,11 +24,14 @@ func (p *Placer) placeHeal(h *store.Heal) {
 		zap.Any("fee_part", h.FeePart),
 		zap.Any("profit_part", h.ProfitPart),
 	)
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 6; i++ {
 		resp, err := p.PlaceOrder(p.ctx, h.PlaceParams)
 		if err != nil {
 			p.log.Error("heal_place_error", zap.Error(err))
-			msg := fmt.Sprintf("try_count:%d err:%s", i, err.Error())
+			msg := fmt.Sprintf("try:%d err:%s", i, err.Error())
+			if h.ErrorMsg != nil {
+				msg = fmt.Sprintf("%s :: %s", msg, *h.ErrorMsg)
+			}
 			h.ErrorMsg = ftxapi.StringPointer(msg)
 		}
 		if resp != nil {
@@ -72,14 +75,12 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 		} else {
 			h.PlaceParams.Price = h.PlaceParams.Price.Sub(priceInc)
 		}
+		msg := fmt.Sprintf("heal_price_inc:%v", priceInc)
 		if h.ErrorMsg != nil {
-			newMsg := fmt.Sprintf("heal_price_inc:%v", priceInc)
-			msg := fmt.Sprintf("%s :: %s", newMsg, *h.ErrorMsg)
-			h.ErrorMsg = ftxapi.StringPointer(msg)
-		} else {
-			msg := fmt.Sprintf("heal_price_inc:%v", priceInc)
-			h.ErrorMsg = ftxapi.StringPointer(msg)
+			msg = fmt.Sprintf("%s :: %s", msg, *h.ErrorMsg)
 		}
+		h.ErrorMsg = ftxapi.StringPointer(msg)
+
 		p.healMap.Store(h.PlaceParams.ClientID, h)
 		p.placeHeal(&h)
 		return
