@@ -6,6 +6,7 @@ import (
 	"github.com/aibotsoft/ftx-api"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -57,6 +58,13 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 			return
 		}
 		h := got.(store.Heal)
+		split := strings.Split(h.PlaceParams.ClientID, ":")
+		try, err := strconv.Atoi(split[2])
+		if err != nil {
+			p.log.Error("convert_try_error", zap.String("client_id", h.PlaceParams.ClientID))
+		}
+		next := try + 1
+		h.PlaceParams.ClientID = fmt.Sprintf("%d:%s:%d", h.ID, HEAL, next)
 		//0.01% from original price
 		priceInc := h.PlaceParams.Price.Div(d100).Div(d100)
 		if h.PlaceParams.Side == store.SideSell {
@@ -72,6 +80,7 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 			msg := fmt.Sprintf("heal_price_inc:%v", priceInc)
 			h.ErrorMsg = ftxapi.StringPointer(msg)
 		}
+		p.healMap.Store(h.PlaceParams.ClientID, h)
 		p.placeHeal(&h)
 		return
 
@@ -95,7 +104,7 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 			Type:     store.OrderTypeLimit,
 			Ioc:      false,
 			PostOnly: true,
-			ClientID: fmt.Sprintf("%d:%s", sb.ID, HEAL),
+			ClientID: fmt.Sprintf("%d:%s:0", sb.ID, HEAL),
 		},
 	}
 
