@@ -65,14 +65,15 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 		zap.Any("fee_part", h.FeePart),
 		zap.Any("profit_part", h.ProfitPart),
 	)
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 5; i++ {
 		resp, err := p.PlaceOrder(p.ctx, h.PlaceParams)
 		if err != nil {
 			p.log.Error("heal_place_error",
 				zap.Error(err),
 				zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
 			)
-			h.ErrorMsg = ftxapi.StringPointer(err.Error())
+			msg := fmt.Sprintf("try_count:%d err:%s", i, err.Error())
+			h.ErrorMsg = ftxapi.StringPointer(msg)
 		}
 		if resp != nil {
 			h.OrderID = resp.ID

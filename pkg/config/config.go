@@ -37,8 +37,8 @@ type Config struct {
 	Ftx struct {
 		Name       string `json:"name" default:"ftx"`
 		WsHost     string `json:"ws_host" default:"wss://ftx.com/ws/"`
-		Key        string `json:"key"`
-		Secret     string `json:"secret"`
+		Key        string `json:"-"`
+		Secret     string `json:"-"`
 		SubAccount string `json:"sub_account"`
 	} `json:"ftx"`
 	Nats struct {
