@@ -43,6 +43,7 @@ type Placer struct {
 	saveSbCh       chan *store.Surebet
 	saveOrderCh    chan *ftxapi.Order
 	surebetMap     sync.Map
+	healMap        sync.Map
 }
 type PlaceConfig struct {
 	MaxStake     decimal.Decimal
@@ -175,7 +176,7 @@ func (p *Placer) PlaceOrder(ctx context.Context, param store.PlaceParamsEmb) (*f
 	//p.log.Info("params", zap.Any("p", data))
 	resp, err := p.client.NewPlaceOrderService().Params(data).Do(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("place_error: %w", err)
+		return nil, err
 	}
 	//p.log.Info("place_done",
 	//	zap.Duration("elapsed", time.Since(start)),
