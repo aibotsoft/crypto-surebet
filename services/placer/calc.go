@@ -15,7 +15,7 @@ var placeCounter, fillsCounter atomic.Int64
 
 const usdt = "USDT"
 
-var UsdtPrice = decimal.RequireFromString("1.0005")
+//var UsdtPrice = decimal.RequireFromString("1.0005")
 
 func (p *Placer) Calc(sb *store.Surebet) {
 	sb.StartTime = time.Now().UnixNano()
@@ -37,9 +37,9 @@ func (p *Placer) Calc(sb *store.Surebet) {
 
 	//usdUsdtPrice:=1.0005
 	if strings.Index(sb.FtxTicker.Symbol, usdt) == -1 {
-		sb.BuyProfit = sb.BinTicker.BidPrice.Sub(sb.FtxTicker.AskPrice.Div(UsdtPrice)).Mul(d100).DivRound(sb.BinTicker.BidPrice, 6)
+		sb.BuyProfit = sb.BinTicker.BidPrice.Sub(sb.FtxTicker.AskPrice.Div(sb.UsdtPrice)).Mul(d100).DivRound(sb.BinTicker.BidPrice, 6)
 		//sb.BuyProfit = sb.BinTicker.BidPrice.Sub(sb.FtxTicker.AskPrice).Mul(d100).DivRound(sb.BinTicker.BidPrice, 6)
-		sb.SellProfit = sb.FtxTicker.BidPrice.Div(UsdtPrice).Sub(sb.BinTicker.AskPrice).Mul(d100).DivRound(sb.FtxTicker.BidPrice.Div(UsdtPrice), 6)
+		sb.SellProfit = sb.FtxTicker.BidPrice.Div(sb.UsdtPrice).Sub(sb.BinTicker.AskPrice).Mul(d100).DivRound(sb.FtxTicker.BidPrice.Div(sb.UsdtPrice), 6)
 		//sb.SellProfit = sb.FtxTicker.BidPrice.Sub(sb.BinTicker.AskPrice).Mul(d100).DivRound(sb.FtxTicker.BidPrice, 6)
 		//p.log.Info("buy",
 		//	//zap.Any("BuyProfit", BuyProfit),
