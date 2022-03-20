@@ -69,7 +69,7 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 		next := try + 1
 		h.PlaceParams.ClientID = fmt.Sprintf("%d:%s:%d", h.ID, HEAL, next)
 		//0.01% from original price
-		priceInc := h.PlaceParams.Price.Div(d100).Div(d100)
+		priceInc := h.PlaceParams.Price.Div(d100).Mul(d002)
 		if h.PlaceParams.Side == store.SideSell {
 			h.PlaceParams.Price = h.PlaceParams.Price.Add(priceInc)
 		} else {

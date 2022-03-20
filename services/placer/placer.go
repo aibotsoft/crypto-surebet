@@ -18,6 +18,7 @@ import (
 const cryptoSubject = "crypto-surebet"
 
 var d100 = decimal.RequireFromString("100")
+var d002 = decimal.RequireFromString("0.02")
 var d1 = decimal.RequireFromString("1")
 
 type Placer struct {
