@@ -21,6 +21,7 @@ const usdt = "USDT"
 
 var d100 = decimal.RequireFromString("100")
 var d2 = decimal.RequireFromString("2")
+var d10 = decimal.RequireFromString("10")
 var placeCounter, fillsCounter atomic.Int64
 
 type Placer struct {

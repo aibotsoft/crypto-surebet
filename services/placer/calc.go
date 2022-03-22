@@ -52,10 +52,15 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	}
 	sb.ProfitSubSpread = sb.Profit.Sub(sb.FtxSpread)
 	sb.ProfitSubFee = sb.ProfitSubSpread.Sub(sb.RealFee)
-	sb.ProfitSubAvg = sb.ProfitSubFee.Add(sb.AvgPriceDiff)
+
+	if sb.PlaceParams.Side == store.SideBuy {
+		sb.ProfitSubAvg = sb.ProfitSubFee.Sub(sb.AvgPriceDiff.Div(d10))
+	} else {
+		sb.ProfitSubAvg = sb.ProfitSubFee.Add(sb.AvgPriceDiff.Div(d10))
+	}
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	if sb.ProfitSubFee.LessThan(sb.RequiredProfit) {
+	if sb.ProfitSubAvg.LessThan(sb.RequiredProfit) {
 		//p.log.Debug("profit_too_low",
 		//	zap.String("symbol", sb.FtxTicker.Symbol),
 		//	//zap.Any("QuoteBalance", sb.QuoteBalance),
@@ -85,7 +90,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 		p.log.Debug("binance_stale", zap.String("symbol", sb.FtxTicker.Symbol), zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)), zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)))
 		return
 	}
-	profitDiff := sb.ProfitSubFee.Sub(sb.RequiredProfit)
+	profitDiff := sb.ProfitSubAvg.Sub(sb.RequiredProfit)
 	sb.ProfitPriceDiff = sb.Price.Mul(profitDiff).DivRound(d100, 6)
 
 	maxSize := sb.BaseTotal.Div(sb.TargetAmount)
@@ -121,7 +126,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 			zap.Any("bin_volume", sb.BinVolume),
 			zap.Any("base_free", sb.BaseBalance.Free),
 			zap.Any("required_profit", sb.RequiredProfit),
-			zap.Any("profit_sub_fee", sb.ProfitSubFee),
+			zap.Any("profit_sub_avg", sb.ProfitSubAvg),
 			//zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
 			//zap.Int("goroutine", runtime.NumGoroutine()),
 		)
@@ -172,7 +177,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 			zap.Any("amount_coef", sb.AmountCoef),
 			zap.Any("profit", sb.Profit),
 			//zap.Any("profit_sub_spread", sb.ProfitSubSpread),
-			zap.Any("profit_sub_fee", sb.ProfitSubFee),
+			zap.Any("profit_sub_avg", sb.ProfitSubAvg),
 			zap.Any("real_fee", sb.RealFee),
 			zap.Any("profit_price_diff", sb.ProfitPriceDiff),
 			zap.Any("base_total", sb.BaseTotal),
@@ -199,26 +204,27 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	p.orderMap.Store(o.ID, o)
 
 	placeCounter.Inc()
-	p.log.Info("success",
+	p.log.Info("bet",
 		zap.Any("id", sb.ID),
 		zap.Any("m", sb.PlaceParams.Market),
 		zap.Any("s", sb.PlaceParams.Side),
 		zap.Any("price", sb.PlaceParams.Price),
 		zap.Any("size", sb.PlaceParams.Size),
 		//zap.Any("target_amount", sb.TargetAmount),
-		zap.Any("target_profit", sb.TargetProfit),
-		zap.Any("required_profit", sb.RequiredProfit),
+		zap.Any("target_p", sb.TargetProfit),
+		zap.Any("req_p", sb.RequiredProfit),
 		//zap.Any("profit_inc", sb.ProfitInc),
 		zap.Any("amount_coef", sb.AmountCoef),
-		zap.Any("profit", sb.Profit),
+		zap.Any("prof", sb.Profit),
+		zap.Any("p_sub_fee", sb.ProfitSubFee),
 		//zap.Any("profit_sub_spread", sb.ProfitSubSpread),
-		zap.Any("profit_sub_fee", sb.ProfitSubFee),
-		zap.Any("real_fee", sb.RealFee),
-		zap.Any("profit_price_diff", sb.ProfitPriceDiff),
-		zap.Any("base_total", sb.BaseTotal),
-		zap.Any("base_open_buy", sb.BaseOpenBuy),
-		zap.Any("base_open_sell", sb.BaseOpenSell),
+		zap.Any("p_sub_avg", sb.ProfitSubAvg),
 		zap.Any("avg_price_diff", sb.AvgPriceDiff),
+		zap.Any("real_fee", sb.RealFee),
+		//zap.Any("p_price_diff", sb.ProfitPriceDiff),
+		zap.Any("base_total", sb.BaseTotal),
+		zap.Any("open_buy", sb.BaseOpenBuy),
+		zap.Any("open_sell", sb.BaseOpenSell),
 		zap.Any("ftx_spread", sb.FtxSpread),
 		zap.Any("bin_spread", sb.BinSpread),
 		zap.Int64("place_count", placeCounter.Load()),
