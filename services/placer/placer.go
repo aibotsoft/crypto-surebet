@@ -20,8 +20,6 @@ const cryptoSubject = "crypto-surebet"
 const usdt = "USDT"
 
 var d100 = decimal.RequireFromString("100")
-var d003 = decimal.RequireFromString("0.03")
-var d1 = decimal.RequireFromString("1")
 var d2 = decimal.RequireFromString("2")
 var placeCounter, fillsCounter atomic.Int64
 
@@ -44,7 +42,6 @@ type Placer struct {
 	checkBalanceCh chan bool
 	placeConfig    PlaceConfig
 	saveSbCh       chan *store.Surebet
-	saveOrderCh    chan *ftxapi.Order
 	surebetMap     sync.Map
 	healMap        sync.Map
 	orderMap       sync.Map
@@ -55,7 +52,6 @@ type PlaceConfig struct {
 	TargetAmount      decimal.Decimal
 	ReferralRate      decimal.Decimal
 	BinFtxVolumeRatio decimal.Decimal
-	//ProfitInc    decimal.Decimal
 }
 
 func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *store.Store) (*Placer, error) {
@@ -80,7 +76,6 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 		symbolMap:      make(map[string]bool),
 		checkBalanceCh: make(chan bool, 20),
 		saveSbCh:       make(chan *store.Surebet, 100),
-		saveOrderCh:    make(chan *ftxapi.Order, 100),
 		placeConfig: PlaceConfig{
 			MaxStake:          decimal.New(cfg.Service.MaxStake, 0),
 			TargetProfit:      decimal.NewFromFloat(cfg.Service.TargetProfit),
@@ -143,11 +138,6 @@ func (p *Placer) Run() error {
 			if err != nil {
 				p.log.Warn("save_sb_error", zap.Error(err))
 			}
-		case order := <-p.saveOrderCh:
-			err = p.store.SaveOrder(order)
-			if err != nil {
-				p.log.Warn("save_order_error", zap.Error(err))
-			}
 		case <-p.checkBalanceCh:
 			err := p.GetBalances()
 			if err != nil {
@@ -159,6 +149,7 @@ func (p *Placer) Run() error {
 			_ = p.GetMarkets()
 		case <-orderTick:
 			_ = p.GetOrdersHistory()
+			_ = p.GetOpenOrders()
 		case <-p.ctx.Done():
 			p.Close()
 			return p.ctx.Err()
@@ -216,8 +207,6 @@ func (p *Placer) AccountInfo() error {
 		return err
 	}
 	p.accountInfo = data
-	p.log.Debug("AccountInfo_done",
-		zap.Duration("elapsed", time.Since(start)), zap.Int("goroutine", runtime.NumGoroutine()),
-	)
+	p.log.Debug("AccountInfo_done", zap.Duration("elapsed", time.Since(start)), zap.Int("goroutine", runtime.NumGoroutine()))
 	return nil
 }

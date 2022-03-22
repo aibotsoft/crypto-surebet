@@ -9,27 +9,6 @@ import (
 	"time"
 )
 
-func (p *Placer) GetOpenBuySell(coin string) (decimal.Decimal, decimal.Decimal) {
-	var buy, sell decimal.Decimal
-	p.orderMap.Range(func(key, value interface{}) bool {
-		order := value.(store.Order)
-		if strings.Index(order.Market, coin) == -1 {
-			return true
-		}
-		if order.Status == store.OrderStatusClosed {
-			p.orderMap.Delete(key)
-			return true
-		}
-		if order.Side == store.SideBuy {
-			buy = buy.Add(decimal.NewFromFloat(order.Size))
-		} else {
-			sell = sell.Add(decimal.NewFromFloat(order.Size))
-		}
-		//fmt.Println(key, order, coin, buy, sell)
-		return true
-	})
-	return buy, sell
-}
 func (p *Placer) Calc(sb *store.Surebet) {
 	sb.StartTime = time.Now().UnixNano()
 	sb.Market = p.FindMarket(sb.FtxTicker.Symbol)
@@ -214,7 +193,6 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	sb.Done = time.Now().UnixNano()
 	sb.OrderID = order.ID
 	p.saveSbCh <- sb
-	//p.saveOrderCh <- order
 
 	placeCounter.Inc()
 	p.log.Info("success",

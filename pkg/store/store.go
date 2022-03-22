@@ -118,15 +118,7 @@ func (s *Store) SaveOrders(apiOrderList []ftxapi.Order) error {
 	}).Create(data).Error
 }
 
-func (s *Store) SaveOrder(apiOrder interface{}) error {
-	var order Order
-	err := copier.Copy(&order, apiOrder)
-	if err != nil {
-		return fmt.Errorf("copy_order_error: %w", err)
-	}
-	if order.Status == OrderStatusClosed {
-		order.ClosedAt = ftxapi.Int64Pointer(time.Now().UnixNano())
-	}
+func (s *Store) SaveOrder(order *Order) error {
 	return s.db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&order).Error
 }
 

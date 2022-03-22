@@ -9,6 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -47,17 +48,29 @@ func (p *Placer) processOrder(order *ftxapi.WsOrdersEvent) {
 		p.log.Info("order_client_id_null", zap.Any("data", order.Data))
 		return
 	}
-	if order.Data.Status == ftxapi.OrderStatusClosed {
-		go p.heal(order.Data)
-		p.orderMap.Delete(order.Data.ID)
+	var o store.Order
+	err := copier.Copy(&o, order.Data)
+	if err != nil {
+		p.log.Error("copy_order_error", zap.Error(err))
+		return
 	}
-	err := p.store.SaveOrder(order.Data)
+
+	if o.Status == store.OrderStatusClosed {
+		go p.heal(order.Data)
+		p.orderMap.Delete(o.ID)
+		o.ClosedAt = ftxapi.Int64Pointer(time.Now().UnixNano())
+	} else {
+		p.orderMap.Store(o.ID, o)
+	}
+	err = p.store.SaveOrder(&o)
 	if err != nil {
 		p.log.Error("save_order_error", zap.Error(err))
 	}
 }
 func (p *Placer) GetOpenOrders() error {
-	resp, err := p.client.NewGetOpenOrdersService().Do(p.ctx)
+	ctx, cancel := context.WithTimeout(p.ctx, 5*time.Second)
+	defer cancel()
+	resp, err := p.client.NewGetOpenOrdersService().Do(ctx)
 	if err != nil {
 		return err
 	}
@@ -70,11 +83,28 @@ func (p *Placer) GetOpenOrders() error {
 		p.orderMap.Store(order.ID, order)
 		//p.log.Info("", zap.Any("order", order))
 	}
-	//err = p.store.SaveOrders(&data)
-	//if err != nil {
-	//	return err
-	//}
 	return err
+}
+func (p *Placer) GetOpenBuySell(coin string) (decimal.Decimal, decimal.Decimal) {
+	var buy, sell decimal.Decimal
+	p.orderMap.Range(func(key, value interface{}) bool {
+		order := value.(store.Order)
+		if strings.Index(order.Market, coin) == -1 {
+			return true
+		}
+		if order.Status == store.OrderStatusClosed {
+			p.orderMap.Delete(key)
+			return true
+		}
+		if order.Side == store.SideBuy {
+			buy = buy.Add(decimal.NewFromFloat(order.Size))
+		} else {
+			sell = sell.Add(decimal.NewFromFloat(order.Size))
+		}
+		//fmt.Println(key, order, coin, buy, sell)
+		return true
+	})
+	return buy, sell
 }
 func (p *Placer) GetOrdersHistory() error {
 	start := time.Now()
@@ -101,7 +131,7 @@ func (p *Placer) GetOrdersHistory() error {
 }
 func (p *Placer) processFills(fills *ftxapi.WsFillsEvent) {
 	fillsCounter.Inc()
-	//p.log.Info("fills", zap.Any("data", fills.Data))
+	p.log.Debug("fills", zap.Any("data", fills.Data))
 	var data store.Fills
 	err := copier.Copy(&data, fills.Data)
 	if err != nil {

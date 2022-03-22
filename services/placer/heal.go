@@ -17,7 +17,7 @@ const (
 )
 
 func (p *Placer) placeHeal(h *store.Heal) {
-	p.log.Info("begin_heal",
+	p.log.Info("heal",
 		zap.Any("place", h.PlaceParams),
 		zap.Any("filled_size", h.FilledSize),
 		zap.Any("avg_fill_price", h.AvgFillPrice),
@@ -46,7 +46,7 @@ func (p *Placer) placeHeal(h *store.Heal) {
 	if err != nil {
 		p.log.Error("save_heal_error", zap.Error(err))
 	}
-	p.log.Info("done_heal", zap.Duration("elapsed", time.Duration(h.Done-h.Start)))
+	p.log.Debug("done_heal", zap.Duration("elapsed", time.Duration(h.Done-h.Start)))
 }
 
 func (p *Placer) heal(order ftxapi.WsOrders) {
@@ -124,6 +124,8 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 		p.log.Warn("size_too_small_to_heal", zap.Any("h", h))
 		msg := fmt.Sprintf("size:%v min_provide:%v", h.PlaceParams.Size, sb.Market.MinProvideSize)
 		h.ErrorMsg = ftxapi.StringPointer(msg)
+		h.Done = time.Now().UnixNano()
+		h.ProfitPart = decimal.Zero
 		_ = p.store.SaveHeal(&h)
 		return
 	}
