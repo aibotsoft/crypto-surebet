@@ -3,6 +3,7 @@ package placer
 import (
 	"fmt"
 	"github.com/aibotsoft/crypto-surebet/pkg/store"
+	"github.com/jinzhu/copier"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 	"strings"
@@ -193,6 +194,9 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	sb.Done = time.Now().UnixNano()
 	sb.OrderID = order.ID
 	p.saveSbCh <- sb
+	var o store.Order
+	_ = copier.Copy(&o, order)
+	p.orderMap.Store(o.ID, o)
 
 	placeCounter.Inc()
 	p.log.Info("success",
@@ -238,8 +242,3 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	}
 	p.checkBalanceCh <- true
 }
-
-//if sb.BinTicker.BidPrice.IsZero() || sb.FtxTicker.BidPrice.IsZero() {
-//p.log.Debug("price_zero", zap.Any("ftx", sb.FtxTicker), zap.Any("binance", sb.BinTicker))
-//return
-//}
