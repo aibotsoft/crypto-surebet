@@ -68,8 +68,8 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 		}
 		next := try + 1
 		h.PlaceParams.ClientID = fmt.Sprintf("%d:%s:%d", h.ID, HEAL, next)
-		//0.01% from original price
-		priceInc := h.PlaceParams.Price.Div(d100).Mul(d002)
+		//TargetProfit*2 from original price
+		priceInc := h.PlaceParams.Price.Div(d100).Mul(p.placeConfig.TargetProfit.Mul(d2))
 		if h.PlaceParams.Side == store.SideSell {
 			h.PlaceParams.Price = h.PlaceParams.Price.Add(priceInc)
 		} else {
@@ -119,6 +119,13 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 	} else {
 		h.PlaceParams.Side = store.SideSell
 		h.PlaceParams.Price = h.AvgFillPrice.Mul(h.FilledSize).Add(h.FeePart).Add(h.ProfitPart).Div(h.PlaceParams.Size)
+	}
+	if h.PlaceParams.Size.LessThan(sb.Market.MinProvideSize) {
+		p.log.Warn("size_too_small_to_heal", zap.Any("h", h))
+		msg := fmt.Sprintf("size:%v min_provide:%v", h.PlaceParams.Size, sb.Market.MinProvideSize)
+		h.ErrorMsg = ftxapi.StringPointer(msg)
+		_ = p.store.SaveHeal(&h)
+		return
 	}
 	p.healMap.Store(h.PlaceParams.ClientID, h)
 	p.placeHeal(&h)

@@ -4,67 +4,71 @@ import (
 	"fmt"
 	"github.com/aibotsoft/crypto-surebet/pkg/store"
 	"github.com/shopspring/decimal"
-	"go.uber.org/atomic"
 	"go.uber.org/zap"
-	"runtime"
 	"strings"
 	"time"
 )
 
-var placeCounter, fillsCounter atomic.Int64
-
-const usdt = "USDT"
-
-//var UsdtPrice = decimal.RequireFromString("1.0005")
-
+func (p *Placer) GetOpenBuySell(coin string) (decimal.Decimal, decimal.Decimal) {
+	var buy, sell decimal.Decimal
+	p.orderMap.Range(func(key, value interface{}) bool {
+		order := value.(store.Order)
+		if strings.Index(order.Market, coin) == -1 {
+			return true
+		}
+		if order.Status == store.OrderStatusClosed {
+			p.orderMap.Delete(key)
+			return true
+		}
+		if order.Side == store.SideBuy {
+			buy = buy.Add(decimal.NewFromFloat(order.Size))
+		} else {
+			sell = sell.Add(decimal.NewFromFloat(order.Size))
+		}
+		//fmt.Println(key, order, coin, buy, sell)
+		return true
+	})
+	return buy, sell
+}
 func (p *Placer) Calc(sb *store.Surebet) {
 	sb.StartTime = time.Now().UnixNano()
 	sb.Market = p.FindMarket(sb.FtxTicker.Symbol)
 	sb.MaxStake = p.placeConfig.MaxStake
 	sb.TargetProfit = p.placeConfig.TargetProfit
-
-	sb.TargetAmount = p.targetAmount
-	sb.ProfitInc = sb.TargetProfit.DivRound(sb.TargetAmount, 7)
+	sb.TargetAmount = p.placeConfig.TargetAmount
 
 	sb.RealFee = p.accountInfo.TakerFee.Sub(p.accountInfo.TakerFee.Mul(p.placeConfig.ReferralRate)).Mul(d100)
+	sb.BaseOpenBuy, sb.BaseOpenSell = p.GetOpenBuySell(sb.Market.BaseCurrency)
 
 	sb.BaseBalance = p.FindBalance(sb.Market.BaseCurrency)
+	sb.BaseTotal = sb.BaseBalance.Free.Add(sb.BaseOpenBuy).Sub(sb.BaseOpenSell)
+	//sb.AmountCoef = sb.BaseBalance.UsdValue.Div(sb.MaxStake).Sub(sb.TargetAmount).Mul(sb.ProfitInc).Round(5)
+	sb.ProfitInc = sb.BaseOpenBuy.Add(sb.BaseOpenSell).DivRound(sb.BaseTotal, 4)
+	sb.AmountCoef = sb.ProfitInc.Mul(d2).Mul(sb.TargetProfit).Round(4)
+
 	sb.QuoteBalance = p.FindBalance(sb.Market.QuoteCurrency)
-	sb.AmountCoef = sb.BaseBalance.UsdValue.Div(sb.MaxStake).Sub(sb.TargetAmount).Mul(sb.ProfitInc).Round(5)
 
 	sb.FtxSpread = sb.FtxTicker.AskPrice.Sub(sb.FtxTicker.BidPrice).Mul(d100).DivRound(sb.FtxTicker.AskPrice, 6)
 	sb.BinSpread = sb.BinTicker.AskPrice.Sub(sb.BinTicker.BidPrice).Mul(d100).DivRound(sb.BinTicker.AskPrice, 6)
-
-	//usdUsdtPrice:=1.0005
 	if strings.Index(sb.FtxTicker.Symbol, usdt) == -1 {
 		sb.BuyProfit = sb.BinTicker.BidPrice.Sub(sb.FtxTicker.AskPrice.Div(sb.UsdtPrice)).Mul(d100).DivRound(sb.BinTicker.BidPrice, 6)
-		//sb.BuyProfit = sb.BinTicker.BidPrice.Sub(sb.FtxTicker.AskPrice).Mul(d100).DivRound(sb.BinTicker.BidPrice, 6)
 		sb.SellProfit = sb.FtxTicker.BidPrice.Div(sb.UsdtPrice).Sub(sb.BinTicker.AskPrice).Mul(d100).DivRound(sb.FtxTicker.BidPrice.Div(sb.UsdtPrice), 6)
-		//sb.SellProfit = sb.FtxTicker.BidPrice.Sub(sb.BinTicker.AskPrice).Mul(d100).DivRound(sb.FtxTicker.BidPrice, 6)
-		//p.log.Info("buy",
-		//	//zap.Any("BuyProfit", BuyProfit),
-		//	zap.Any("sb.BuyProfit", sb.BuyProfit),
-		//
-		//	//zap.Any("SellProfit", SellProfit),
-		//	zap.Any("sb.SellProfit", sb.SellProfit),
-		//)
 	} else {
 		sb.BuyProfit = sb.BinTicker.BidPrice.Sub(sb.FtxTicker.AskPrice).Mul(d100).DivRound(sb.BinTicker.BidPrice, 6)
 		sb.SellProfit = sb.FtxTicker.BidPrice.Sub(sb.BinTicker.AskPrice).Mul(d100).DivRound(sb.FtxTicker.BidPrice, 6)
 	}
-
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+	sb.RequiredProfit = sb.TargetProfit.Add(sb.AmountCoef)
 	if sb.BuyProfit.GreaterThan(sb.SellProfit) {
 		sb.PlaceParams.Side = store.SideBuy
 		sb.Price = sb.FtxTicker.AskPrice
+		sb.BinPrice = sb.BinTicker.BidPrice
 		sb.Profit = sb.BuyProfit
-		sb.RequiredProfit = sb.TargetProfit.Add(sb.AmountCoef)
 	} else {
 		sb.PlaceParams.Side = store.SideSell
 		sb.Price = sb.FtxTicker.BidPrice
+		sb.BinPrice = sb.BinTicker.AskPrice
 		sb.Profit = sb.SellProfit
-		sb.RequiredProfit = decimal.Max(sb.TargetProfit.Sub(sb.AmountCoef), decimal.Zero)
 	}
 	sb.ProfitSubSpread = sb.Profit.Sub(sb.FtxSpread)
 	sb.ProfitSubFee = sb.ProfitSubSpread.Sub(sb.RealFee)
@@ -79,11 +83,17 @@ func (p *Placer) Calc(sb *store.Surebet) {
 		//	zap.Any("profit_sub_fee", sb.ProfitSubFee),
 		//	zap.Any("profit_sub_spread", sb.ProfitSubSpread),
 		//	zap.Any("profit", sb.Profit),
-		//	//zap.Any("required_profit", sb.RequiredProfit),
+		//	zap.Any("AmountCoef", sb.AmountCoef),
+		//	zap.Any("free", sb.BaseBalance.Free),
+		//	zap.Any("buy", sb.BaseOpenBuy),
+		//	zap.Any("sell", sb.BaseOpenSell),
+		//	zap.Any("total", sb.BaseTotal),
+		//	//zap.Any("sb.AvgPriceDiff", sb.AvgPriceDiff),
+		//	zap.Any("required_profit", sb.RequiredProfit),
 		//	//zap.Any("target_profit", sb.TargetProfit),
 		//	//zap.Any("amount_coef", sb.AmountCoef),
 		//	//zap.Any("real_fee", sb.RealFee),
-		//	//zap.Any("profit_inc", sb.ProfitInc),
+		//	zap.Any("profit_inc", sb.ProfitInc),
 		//)
 		return
 	}
@@ -96,20 +106,29 @@ func (p *Placer) Calc(sb *store.Surebet) {
 		return
 	}
 	profitDiff := sb.ProfitSubFee.Sub(sb.RequiredProfit)
-	sb.ProfitPriceDiff = sb.Price.Mul(profitDiff).Div(d100).Round(6)
+	sb.ProfitPriceDiff = sb.Price.Mul(profitDiff).DivRound(d100, 6)
+
+	maxSize := sb.BaseTotal.Div(sb.TargetAmount)
 
 	var size decimal.Decimal
 	if sb.PlaceParams.Side == store.SideSell {
 		sb.PlaceParams.Price = sb.Price.Sub(sb.ProfitPriceDiff).Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
-		sb.BinPrice = sb.BinTicker.AskPrice
 		sb.BinVolume = sb.BinPrice.Mul(sb.BinTicker.AskQty)
-		size = decimal.Min(sb.MaxStake.Div(sb.PlaceParams.Price), sb.BaseBalance.Free, sb.BinTicker.AskQty.Div(p.placeConfig.BinFtxVolumeRatio))
+		size = decimal.Min(
+			maxSize,
+			sb.MaxStake.Div(sb.PlaceParams.Price),
+			sb.BaseBalance.Free,
+			sb.BinTicker.AskQty.Div(p.placeConfig.BinFtxVolumeRatio),
+		)
 	} else {
 		sb.PlaceParams.Price = sb.Price.Add(sb.ProfitPriceDiff).Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
-		sb.BinPrice = sb.BinTicker.BidPrice
 		sb.BinVolume = sb.BinPrice.Mul(sb.BinTicker.BidQty)
-		volume := decimal.Min(sb.MaxStake, sb.QuoteBalance.Free, sb.BinVolume.Div(p.placeConfig.BinFtxVolumeRatio))
-		size = volume.Div(sb.PlaceParams.Price)
+		size = decimal.Min(
+			maxSize,
+			sb.MaxStake.Div(sb.PlaceParams.Price),
+			sb.QuoteBalance.Free.Div(sb.PlaceParams.Price),
+			sb.BinTicker.BidQty.Div(p.placeConfig.BinFtxVolumeRatio),
+		)
 	}
 	if size.LessThan(sb.Market.MinProvideSize) {
 		p.log.Debug("stake_too_low",
@@ -136,7 +155,6 @@ func (p *Placer) Calc(sb *store.Surebet) {
 			zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)),
 			zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)),
 			zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
-			zap.Int("goroutine", runtime.NumGoroutine()),
 		)
 		return
 	}
@@ -144,21 +162,49 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	sb.TakerFee = p.accountInfo.TakerFee
 	sb.PlaceParams.Size = size.Div(sb.Market.MinProvideSize).Floor().Mul(sb.Market.MinProvideSize)
 	sb.Volume = sb.PlaceParams.Size.Mul(sb.PlaceParams.Price).Round(5)
-
-	gotLock := p.Lock(sb.FtxTicker.Symbol)
-	if !gotLock {
-		//p.log.Debug("not_got_lock", zap.String("symbol", sb.FtxTicker.Symbol), zap.Int("goroutine", runtime.NumGoroutine()))
-		return
-	}
-	defer p.Unlock(sb.FtxTicker.Symbol)
-
 	sb.PlaceParams.Market = sb.FtxTicker.Symbol
 	sb.PlaceParams.Type = store.OrderTypeLimit
 	sb.PlaceParams.Ioc = true
 	sb.PlaceParams.PostOnly = false
 	sb.PlaceParams.ClientID = fmt.Sprintf("%d:%s", sb.ID, BET)
 
+	gotLock := p.Lock(sb.Market.BaseCurrency)
+	if !gotLock {
+		//p.log.Debug("not_got_lock", zap.String("symbol", sb.FtxTicker.Symbol), zap.Int("goroutine", runtime.NumGoroutine()))
+		return
+	}
+	defer p.Unlock(sb.Market.BaseCurrency)
+
 	sb.BeginPlace = time.Now().UnixNano()
+
+	if p.cfg.Service.DemoMode {
+		p.log.Info("demo_mode",
+			zap.Any("id", sb.ID),
+			zap.Any("m", sb.PlaceParams.Market),
+			zap.Any("s", sb.PlaceParams.Side),
+			zap.Any("price", sb.PlaceParams.Price),
+			zap.Any("size", sb.PlaceParams.Size),
+
+			//zap.Any("target_amount", sb.TargetAmount),
+			zap.Any("target_profit", sb.TargetProfit),
+			zap.Any("required_profit", sb.RequiredProfit),
+			//zap.Any("profit_inc", sb.ProfitInc),
+			zap.Any("amount_coef", sb.AmountCoef),
+			zap.Any("profit", sb.Profit),
+			//zap.Any("profit_sub_spread", sb.ProfitSubSpread),
+			zap.Any("profit_sub_fee", sb.ProfitSubFee),
+			zap.Any("real_fee", sb.RealFee),
+			zap.Any("profit_price_diff", sb.ProfitPriceDiff),
+			zap.Any("base_total", sb.BaseTotal),
+			zap.Any("base_open_buy", sb.BaseOpenBuy),
+			zap.Any("base_open_sell", sb.BaseOpenSell),
+			zap.Any("avg_price_diff", sb.AvgPriceDiff),
+			zap.Any("ftx_spread", sb.FtxSpread),
+			zap.Any("bin_spread", sb.BinSpread),
+		)
+		return
+	}
+
 	p.surebetMap.Store(sb.PlaceParams.ClientID, sb)
 	order, err := p.PlaceOrder(p.ctx, sb.PlaceParams)
 	if err != nil {
@@ -172,11 +218,37 @@ func (p *Placer) Calc(sb *store.Surebet) {
 
 	placeCounter.Inc()
 	p.log.Info("success",
-		zap.Any("sb", sb),
+		zap.Any("id", sb.ID),
+		zap.Any("m", sb.PlaceParams.Market),
+		zap.Any("s", sb.PlaceParams.Side),
+		zap.Any("price", sb.PlaceParams.Price),
+		zap.Any("size", sb.PlaceParams.Size),
+		//zap.Any("target_amount", sb.TargetAmount),
+		zap.Any("target_profit", sb.TargetProfit),
+		zap.Any("required_profit", sb.RequiredProfit),
+		//zap.Any("profit_inc", sb.ProfitInc),
+		zap.Any("amount_coef", sb.AmountCoef),
+		zap.Any("profit", sb.Profit),
+		//zap.Any("profit_sub_spread", sb.ProfitSubSpread),
+		zap.Any("profit_sub_fee", sb.ProfitSubFee),
+		zap.Any("real_fee", sb.RealFee),
+		zap.Any("profit_price_diff", sb.ProfitPriceDiff),
+		zap.Any("base_total", sb.BaseTotal),
+		zap.Any("base_open_buy", sb.BaseOpenBuy),
+		zap.Any("base_open_sell", sb.BaseOpenSell),
+		zap.Any("avg_price_diff", sb.AvgPriceDiff),
+		zap.Any("ftx_spread", sb.FtxSpread),
+		zap.Any("bin_spread", sb.BinSpread),
 		zap.Int64("place_count", placeCounter.Load()),
 		zap.Int64("fills_count", fillsCounter.Load()),
-		zap.Duration("place_elapsed", time.Duration(sb.Done-sb.BeginPlace)),
+		zap.Duration("elapsed", time.Duration(sb.Done-sb.BeginPlace)),
 	)
+	//p.log.Info("success",
+	//	zap.Any("sb", sb),
+	//	zap.Int64("place_count", placeCounter.Load()),
+	//	zap.Int64("fills_count", fillsCounter.Load()),
+	//	zap.Duration("place_elapsed", time.Duration(sb.Done-sb.BeginPlace)),
+	//)
 	if order != nil {
 		if sb.PlaceParams.Side == store.SideSell {
 			p.BalanceAdd(sb.Market.QuoteCurrency, sb.Volume, sb.Volume)

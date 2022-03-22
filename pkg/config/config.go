@@ -10,7 +10,7 @@ type Config struct {
 	Service struct {
 		Name         string  `json:"name"`
 		TargetProfit float64 `json:"target_profit"`
-		//TargetAmount float64
+		TargetAmount float64 `json:"target_amount"`
 		//MinProfit    float64
 		//ProfitInc    float64
 		BinFtxVolumeRatio   float64       `json:"bin_ftx_volume_ratio"`
@@ -19,6 +19,7 @@ type Config struct {
 		BinanceMaxDelay     time.Duration `json:"binance_max_delay"`
 		BinanceMaxStaleTime time.Duration `json:"binance_max_stale_time"`
 		SendReceiveMaxDelay time.Duration `json:"send_receive_max_delay"`
+		DemoMode            bool          `json:"demo_mode" default:"false"`
 	} `json:"service"`
 	Zap struct {
 		//debug, info, warn, error, fatal, panic
