@@ -30,7 +30,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 		//	zap.Int("goroutine", runtime.NumGoroutine()),
 		//)
 	case <-lockTimer.Done():
-		p.log.Info("lock_too_long",
+		p.log.Debug("lock_too_long",
 			zap.String("s", sb.Market.BaseCurrency),
 			zap.Int64("id", sb.ID),
 			zap.Duration("lock_elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
