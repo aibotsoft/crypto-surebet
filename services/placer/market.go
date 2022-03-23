@@ -3,7 +3,6 @@ package placer
 import (
 	"github.com/aibotsoft/crypto-surebet/pkg/store"
 	"github.com/jinzhu/copier"
-	"sync"
 )
 
 func (p *Placer) GetMarkets() error {
@@ -49,19 +48,19 @@ func (p *Placer) FindMarket(symbol string) *store.MarketEmb {
 func (p *Placer) Unlock(symbol string) {
 	//p.symbolLock.Lock()
 	//defer p.symbolLock.Unlock()
-	p.symbolMap[symbol].Unlock()
+	//p.symbolMap[symbol].Unlock()
 	//delete(p.symbolMap, symbol)
 }
-func (p *Placer) Lock(symbol string) {
+func (p *Placer) Lock(symbol string) chan bool {
 	//p.symbolLock.Lock()
 	//defer p.symbolLock.Unlock()
 	l, ok := p.symbolMap[symbol]
 	if ok {
-		l.Lock()
-		return
+		return l
 	}
-	p.symbolMap[symbol] = &sync.Mutex{}
-	p.symbolMap[symbol].Lock()
+	//p.log.Info("lock", zap.String("s", symbol))
+	p.symbolMap[symbol] = make(chan bool, 1)
+	return p.symbolMap[symbol]
 
 	//got, ok := p.symbolMap[symbol]
 	//if !ok {
@@ -69,5 +68,4 @@ func (p *Placer) Lock(symbol string) {
 	//	p.symbolMap[symbol] = id
 	//	return id, true
 	//}
-	return
 }

@@ -1,6 +1,7 @@
 package placer
 
 import (
+	"context"
 	"fmt"
 	"github.com/aibotsoft/crypto-surebet/pkg/store"
 	"github.com/jinzhu/copier"
@@ -15,17 +16,32 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	sb.StartTime = time.Now().UnixNano()
 	sb.Market = p.FindMarket(sb.FtxTicker.Symbol)
 
-	p.Lock(sb.Market.BaseCurrency)
-	defer p.Unlock(sb.Market.BaseCurrency)
-	lockTime := time.Duration(time.Now().UnixNano() - sb.StartTime)
-	if lockTime > p.cfg.Service.MaxLockTime {
+	lockTimer, cancel := context.WithTimeout(p.ctx, p.cfg.Service.MaxLockTime)
+	defer cancel()
+
+	lock := p.Lock(sb.Market.BaseCurrency)
+	select {
+	case lock <- true:
+		//p.log.Info("got_lock",
+		//	zap.String("s", sb.Market.BaseCurrency),
+		//	zap.Int64("id", sb.ID),
+		//	zap.Duration("lock_elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
+		//	zap.Duration("max_lock_time", p.cfg.Service.MaxLockTime),
+		//	zap.Int("goroutine", runtime.NumGoroutine()),
+		//)
+	case <-lockTimer.Done():
 		p.log.Info("lock_too_long",
 			zap.String("s", sb.Market.BaseCurrency),
-			zap.Duration("lock_elapsed", lockTime),
+			zap.Int64("id", sb.ID),
+			zap.Duration("lock_elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
+			zap.Duration("max_lock_time", p.cfg.Service.MaxLockTime),
 			zap.Int("goroutine", runtime.NumGoroutine()),
 		)
+		return
 	}
-
+	defer func() {
+		<-lock
+	}()
 	sb.MaxStake = p.placeConfig.MaxStake
 	sb.TargetProfit = p.placeConfig.TargetProfit
 	sb.TargetAmount = p.placeConfig.TargetAmount

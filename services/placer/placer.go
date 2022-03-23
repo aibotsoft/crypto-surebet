@@ -37,7 +37,7 @@ type Placer struct {
 	marketLock     sync.Mutex
 	balanceMap     map[string]*store.BalanceEmb
 	balanceLock    sync.Mutex
-	symbolMap      map[string]*sync.Mutex
+	symbolMap      map[string]chan bool
 	symbolLock     sync.Mutex
 	ws             *ftxapi.WebsocketService
 	checkBalanceCh chan bool
@@ -74,7 +74,7 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 		ws:             ws,
 		marketMap:      make(map[string]*store.MarketEmb),
 		balanceMap:     make(map[string]*store.BalanceEmb),
-		symbolMap:      make(map[string]*sync.Mutex),
+		symbolMap:      make(map[string]chan bool),
 		checkBalanceCh: make(chan bool, 20),
 		saveSbCh:       make(chan *store.Surebet, 100),
 		placeConfig: PlaceConfig{
