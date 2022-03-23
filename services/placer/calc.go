@@ -13,6 +13,16 @@ import (
 func (p *Placer) Calc(sb *store.Surebet) {
 	sb.StartTime = time.Now().UnixNano()
 	sb.Market = p.FindMarket(sb.FtxTicker.Symbol)
+
+	p.Lock(sb.Market.BaseCurrency)
+	defer p.Unlock(sb.Market.BaseCurrency)
+	if time.Duration(time.Now().UnixNano()-sb.StartTime) > p.cfg.Service.MaxLockTime {
+		p.log.Info("lock_too_long",
+			zap.Any("lock_elapsed", time.Now().UnixNano()-sb.StartTime),
+			zap.Duration("lock_elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
+		)
+	}
+
 	sb.MaxStake = p.placeConfig.MaxStake
 	sb.TargetProfit = p.placeConfig.TargetProfit
 	sb.TargetAmount = p.placeConfig.TargetAmount
@@ -83,14 +93,14 @@ func (p *Placer) Calc(sb *store.Surebet) {
 		return
 	}
 	if time.Duration(sb.StartTime-sb.ID) > p.cfg.Service.SendReceiveMaxDelay {
-		p.log.Debug("lock_time_too_high", zap.String("symbol", sb.FtxTicker.Symbol), zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)))
+		p.log.Info("lock_time_too_high", zap.String("symbol", sb.FtxTicker.Symbol), zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)))
 		return
 	}
 	if sb.ID != sb.BinTicker.ReceiveTime && time.Duration(sb.StartTime-sb.LastBinTime) > p.cfg.Service.BinanceMaxStaleTime {
-		p.log.Debug("binance_stale", zap.String("symbol", sb.FtxTicker.Symbol), zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)), zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)))
+		p.log.Info("binance_stale", zap.String("symbol", sb.FtxTicker.Symbol), zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)), zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)))
 		return
 	}
-	profitDiff := sb.ProfitSubAvg.Sub(sb.RequiredProfit)
+	profitDiff := sb.ProfitSubAvg.Sub(sb.RequiredProfit).Div(d2)
 	sb.ProfitPriceDiff = sb.Price.Mul(profitDiff).DivRound(d100, 6)
 
 	maxSize := sb.BaseTotal.Div(sb.TargetAmount)
@@ -116,7 +126,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 		)
 	}
 	if size.LessThan(sb.Market.MinProvideSize) {
-		p.log.Debug("stake_too_low",
+		p.log.Info("stake_too_low",
 			zap.String("symbol", sb.FtxTicker.Symbol),
 			zap.Any("side", sb.PlaceParams.Side),
 			zap.Any("size", size),
@@ -127,13 +137,13 @@ func (p *Placer) Calc(sb *store.Surebet) {
 			zap.Any("base_free", sb.BaseBalance.Free),
 			zap.Any("required_profit", sb.RequiredProfit),
 			zap.Any("profit_sub_avg", sb.ProfitSubAvg),
-			//zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
+			zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
 			//zap.Int("goroutine", runtime.NumGoroutine()),
 		)
 		return
 	}
 	if time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime) < -p.cfg.Service.BinanceMaxDelay {
-		p.log.Debug("binance_too_delayed",
+		p.log.Info("binance_too_delayed",
 			zap.String("symbol", sb.FtxTicker.Symbol),
 			zap.Duration("bin_ftx_diff", time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime)),
 			zap.Duration("binance_max_delay", -p.cfg.Service.BinanceMaxDelay),
@@ -153,36 +163,42 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	sb.PlaceParams.PostOnly = false
 	sb.PlaceParams.ClientID = fmt.Sprintf("%d:%s", sb.ID, BET)
 
-	gotLock := p.Lock(sb.Market.BaseCurrency)
-	if !gotLock {
-		//p.log.Debug("not_got_lock", zap.String("symbol", sb.FtxTicker.Symbol), zap.Int("goroutine", runtime.NumGoroutine()))
-		return
-	}
-	defer p.Unlock(sb.Market.BaseCurrency)
+	//lockID, gotLock := p.Lock(sb.Market.BaseCurrency, sb.ID)
+	//if !gotLock {
+	//	p.log.Debug("not_got_lock",
+	//		zap.String("symbol", sb.FtxTicker.Symbol),
+	//		zap.Any("id", sb.ID),
+	//		zap.Any("lockID", lockID),
+	//		zap.Int("goroutine", runtime.NumGoroutine()),
+	//	)
+	//	return
+	//}
+	//defer p.Unlock(sb.Market.BaseCurrency)
 
 	sb.BeginPlace = time.Now().UnixNano()
 
 	if p.cfg.Service.DemoMode {
 		p.log.Info("demo_mode",
-			zap.Any("id", sb.ID),
+			//zap.Any("id", sb.ID),
 			zap.Any("m", sb.PlaceParams.Market),
 			zap.Any("s", sb.PlaceParams.Side),
-			zap.Any("price", sb.PlaceParams.Price),
+			zap.Any("price", sb.Price),
+			zap.Any("place_price", sb.PlaceParams.Price),
 			zap.Any("size", sb.PlaceParams.Size),
-
-			//zap.Any("target_amount", sb.TargetAmount),
-			zap.Any("target_profit", sb.TargetProfit),
-			zap.Any("required_profit", sb.RequiredProfit),
 			//zap.Any("profit_inc", sb.ProfitInc),
 			zap.Any("amount_coef", sb.AmountCoef),
-			zap.Any("profit", sb.Profit),
+			//zap.Any("target_amount", sb.TargetAmount),
+			//zap.Any("target_p", sb.TargetProfit),
+			zap.Any("req_p", sb.RequiredProfit),
+			//zap.Any("profit", sb.Profit),
 			//zap.Any("profit_sub_spread", sb.ProfitSubSpread),
-			zap.Any("profit_sub_avg", sb.ProfitSubAvg),
-			zap.Any("real_fee", sb.RealFee),
+			zap.Any("p_sub_fee", sb.ProfitSubFee),
+			zap.Any("p_sub_avg", sb.ProfitSubAvg),
 			zap.Any("profit_price_diff", sb.ProfitPriceDiff),
-			zap.Any("base_total", sb.BaseTotal),
-			zap.Any("base_open_buy", sb.BaseOpenBuy),
-			zap.Any("base_open_sell", sb.BaseOpenSell),
+			//zap.Any("real_fee", sb.RealFee),
+			zap.Any("total", sb.BaseTotal),
+			zap.Any("open_buy", sb.BaseOpenBuy),
+			zap.Any("open_sell", sb.BaseOpenSell),
 			zap.Any("avg_price_diff", sb.AvgPriceDiff),
 			zap.Any("ftx_spread", sb.FtxSpread),
 			zap.Any("bin_spread", sb.BinSpread),
@@ -214,7 +230,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 		zap.Any("target_p", sb.TargetProfit),
 		zap.Any("req_p", sb.RequiredProfit),
 		//zap.Any("profit_inc", sb.ProfitInc),
-		zap.Any("amount_coef", sb.AmountCoef),
+		zap.Any("a_coef", sb.AmountCoef),
 		zap.Any("prof", sb.Profit),
 		zap.Any("p_sub_fee", sb.ProfitSubFee),
 		//zap.Any("profit_sub_spread", sb.ProfitSubSpread),
