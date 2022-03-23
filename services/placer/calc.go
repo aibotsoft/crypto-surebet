@@ -6,6 +6,7 @@ import (
 	"github.com/jinzhu/copier"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -16,10 +17,12 @@ func (p *Placer) Calc(sb *store.Surebet) {
 
 	p.Lock(sb.Market.BaseCurrency)
 	defer p.Unlock(sb.Market.BaseCurrency)
-	if time.Duration(time.Now().UnixNano()-sb.StartTime) > p.cfg.Service.MaxLockTime {
+	lockTime := time.Duration(time.Now().UnixNano() - sb.StartTime)
+	if lockTime > p.cfg.Service.MaxLockTime {
 		p.log.Info("lock_too_long",
-			zap.Any("lock_elapsed", time.Now().UnixNano()-sb.StartTime),
-			zap.Duration("lock_elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
+			zap.String("s", sb.Market.BaseCurrency),
+			zap.Duration("lock_elapsed", lockTime),
+			zap.Int("goroutine", runtime.NumGoroutine()),
 		)
 	}
 
