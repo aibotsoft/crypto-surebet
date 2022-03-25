@@ -53,6 +53,8 @@ type PlaceConfig struct {
 	TargetAmount      decimal.Decimal
 	ReferralRate      decimal.Decimal
 	BinFtxVolumeRatio decimal.Decimal
+	ProfitDiffRatio   decimal.Decimal
+	AvgPriceDiffRatio decimal.Decimal
 }
 
 func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *store.Store) (*Placer, error) {
@@ -78,11 +80,13 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 		checkBalanceCh: make(chan bool, 20),
 		saveSbCh:       make(chan *store.Surebet, 100),
 		placeConfig: PlaceConfig{
-			MaxStake:          decimal.New(cfg.Service.MaxStake, 0),
+			MaxStake:          decimal.NewFromInt(cfg.Service.MaxStake),
 			TargetProfit:      decimal.NewFromFloat(cfg.Service.TargetProfit),
-			BinFtxVolumeRatio: decimal.NewFromFloat(cfg.Service.BinFtxVolumeRatio),
-			TargetAmount:      decimal.NewFromFloat(cfg.Service.TargetAmount),
+			BinFtxVolumeRatio: decimal.NewFromInt(cfg.Service.BinFtxVolumeRatio),
+			TargetAmount:      decimal.NewFromInt(cfg.Service.TargetAmount),
 			ReferralRate:      decimal.NewFromFloat(cfg.Service.ReferralRate),
+			ProfitDiffRatio:   decimal.NewFromInt(cfg.Service.ProfitDiffRatio),
+			AvgPriceDiffRatio: decimal.NewFromInt(cfg.Service.AvgPriceDiffRatio),
 		},
 	}, nil
 }

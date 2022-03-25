@@ -234,39 +234,40 @@ type Surebet struct {
 	BuyProfit  decimal.Decimal `json:"buy_profit" gorm:"type:numeric not null"`
 	SellProfit decimal.Decimal `json:"sell_profit" gorm:"type:numeric not null"`
 	//MinProfit       decimal.Decimal `json:"min_profit" gorm:"type:numeric not null"`
-	TargetProfit    decimal.Decimal `json:"target_profit" gorm:"type:numeric not null"`
-	Profit          decimal.Decimal `json:"profit" gorm:"type:numeric not null"`
-	RequiredProfit  decimal.Decimal `json:"required_profit" gorm:"type:numeric not null"`
-	AmountCoef      decimal.Decimal `json:"amount_coef" gorm:"type:numeric not null"`
-	ProfitInc       decimal.Decimal `json:"profit_inc" gorm:"type:numeric not null"`
-	Volume          decimal.Decimal `json:"volume" gorm:"type:numeric not null"`
-	MaxStake        decimal.Decimal `json:"max_stake" gorm:"type:numeric not null"`
-	PlaceParams     PlaceParamsEmb  `json:"place" gorm:"embedded;embeddedPrefix:place_"`
-	BinTicker       *TickerData     `json:"b" gorm:"embedded;embeddedPrefix:bin_"`
-	FtxTicker       *TickerData     `json:"o" gorm:"embedded;embeddedPrefix:ftx_"`
-	BaseBalance     *BalanceEmb     `json:"base_balance,omitempty" gorm:"embedded;embeddedPrefix:base_"`
-	QuoteBalance    *BalanceEmb     `json:"quote_balance,omitempty" gorm:"embedded;embeddedPrefix:quote_"`
-	MakerFee        decimal.Decimal `json:"maker_fee" gorm:"type:numeric not null"`
-	TakerFee        decimal.Decimal `json:"taker_fee" gorm:"type:numeric not null"`
-	Market          *MarketEmb      `json:"market,omitempty" gorm:"embedded"`
-	ProfitPriceDiff decimal.Decimal `json:"profit_price_diff" gorm:"type:numeric"`
-	ConnReused      bool            `json:"conn_reused"`
-	BinVolume       decimal.Decimal `json:"bin_volume" gorm:"type:numeric"`
-	Price           decimal.Decimal `json:"price" gorm:"type:numeric"`
-	ProfitSubSpread decimal.Decimal `json:"profit_sub_spread" gorm:"type:numeric"`
-	BinPrice        decimal.Decimal `json:"bin_price" gorm:"type:numeric"`
-	ProfitSubFee    decimal.Decimal `json:"profit_sub_fee" gorm:"type:numeric"`
-	RealFee         decimal.Decimal `json:"real_fee" gorm:"type:numeric"`
-	TargetAmount    decimal.Decimal `json:"target_amount" gorm:"type:numeric"`
-	OrderID         int64           `json:"order_id"`
-	AvgPriceDiff    decimal.Decimal `json:"avg_price_diff" gorm:"type:numeric"`
-	MaxPriceDiff    decimal.Decimal `json:"max_price_diff" gorm:"type:numeric"`
-	MinPriceDiff    decimal.Decimal `json:"min_price_diff" gorm:"type:numeric"`
-	ProfitSubAvg    decimal.Decimal `json:"profit_sub_avg" gorm:"type:numeric"`
-	UsdtPrice       decimal.Decimal `json:"usdt_price"  gorm:"type:numeric"`
-	BaseTotal       decimal.Decimal `json:"base_total" gorm:"type:numeric"`
-	BaseOpenBuy     decimal.Decimal `json:"base_open_buy" gorm:"type:numeric"`
-	BaseOpenSell    decimal.Decimal `json:"base_open_sell" gorm:"type:numeric"`
+	TargetProfit      decimal.Decimal `json:"target_profit" gorm:"type:numeric not null"`
+	Profit            decimal.Decimal `json:"profit" gorm:"type:numeric not null"`
+	RequiredProfit    decimal.Decimal `json:"required_profit" gorm:"type:numeric not null"`
+	AmountCoef        decimal.Decimal `json:"amount_coef" gorm:"type:numeric not null"`
+	ProfitInc         decimal.Decimal `json:"profit_inc" gorm:"type:numeric not null"`
+	Volume            decimal.Decimal `json:"volume" gorm:"type:numeric not null"`
+	MaxStake          decimal.Decimal `json:"max_stake" gorm:"type:numeric not null"`
+	PlaceParams       PlaceParamsEmb  `json:"place" gorm:"embedded;embeddedPrefix:place_"`
+	BinTicker         *TickerData     `json:"b" gorm:"embedded;embeddedPrefix:bin_"`
+	FtxTicker         *TickerData     `json:"o" gorm:"embedded;embeddedPrefix:ftx_"`
+	BaseBalance       *BalanceEmb     `json:"base_balance,omitempty" gorm:"embedded;embeddedPrefix:base_"`
+	QuoteBalance      *BalanceEmb     `json:"quote_balance,omitempty" gorm:"embedded;embeddedPrefix:quote_"`
+	MakerFee          decimal.Decimal `json:"maker_fee" gorm:"type:numeric not null"`
+	TakerFee          decimal.Decimal `json:"taker_fee" gorm:"type:numeric not null"`
+	Market            *MarketEmb      `json:"market,omitempty" gorm:"embedded"`
+	ProfitPriceDiff   decimal.Decimal `json:"profit_price_diff" gorm:"type:numeric"`
+	ConnReused        bool            `json:"conn_reused"`
+	BinVolume         decimal.Decimal `json:"bin_volume" gorm:"type:numeric"`
+	Price             decimal.Decimal `json:"price" gorm:"type:numeric"`
+	ProfitSubSpread   decimal.Decimal `json:"profit_sub_spread" gorm:"type:numeric"`
+	BinPrice          decimal.Decimal `json:"bin_price" gorm:"type:numeric"`
+	ProfitSubFee      decimal.Decimal `json:"profit_sub_fee" gorm:"type:numeric"`
+	RealFee           decimal.Decimal `json:"real_fee" gorm:"type:numeric"`
+	TargetAmount      decimal.Decimal `json:"target_amount" gorm:"type:numeric"`
+	OrderID           int64           `json:"order_id"`
+	AvgPriceDiff      decimal.Decimal `json:"avg_price_diff" gorm:"type:numeric"`
+	MaxPriceDiff      decimal.Decimal `json:"max_price_diff" gorm:"type:numeric"`
+	MinPriceDiff      decimal.Decimal `json:"min_price_diff" gorm:"type:numeric"`
+	ProfitSubAvg      decimal.Decimal `json:"profit_sub_avg" gorm:"type:numeric"`
+	UsdtPrice         decimal.Decimal `json:"usdt_price"  gorm:"type:numeric"`
+	BaseTotal         decimal.Decimal `json:"base_total" gorm:"type:numeric"`
+	BaseOpenBuy       decimal.Decimal `json:"base_open_buy" gorm:"type:numeric"`
+	BaseOpenSell      decimal.Decimal `json:"base_open_sell" gorm:"type:numeric"`
+	AvgPriceDiffRatio decimal.Decimal `json:"avg_price_diff_ratio" gorm:"type:numeric"`
 }
 type Heal struct {
 	CreatedAt    time.Time       `json:"-" gorm:"not null"`

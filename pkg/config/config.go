@@ -8,12 +8,12 @@ import (
 
 type Config struct {
 	Service struct {
-		Name         string  `json:"name"`
-		TargetProfit float64 `json:"target_profit"`
-		TargetAmount float64 `json:"target_amount"`
-		//MinProfit    float64
-		//ProfitInc    float64
-		BinFtxVolumeRatio   float64       `json:"bin_ftx_volume_ratio"`
+		Name                string        `json:"name"`
+		TargetProfit        float64       `json:"target_profit"`
+		TargetAmount        int64         `json:"target_amount"`
+		BinFtxVolumeRatio   int64         `json:"bin_ftx_volume_ratio"`
+		ProfitDiffRatio     int64         `json:"profit_diff_ratio"`
+		AvgPriceDiffRatio   int64         `json:"avg_price_diff_ratio"`
 		MaxStake            int64         `json:"max_stake"`
 		ReferralRate        float64       `json:"referral_rate"`
 		BinanceMaxDelay     time.Duration `json:"binance_max_delay"`
