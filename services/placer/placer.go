@@ -25,20 +25,24 @@ var d10 = decimal.RequireFromString("10")
 //var placeCounter, fillsCounter atomic.Int64
 
 type Placer struct {
-	cfg            *config.Config
-	log            *zap.Logger
-	ctx            context.Context
-	store          *store.Store
-	nc             *nats.Conn
-	ec             *nats.EncodedConn
-	client         *ftxapi.Client
-	accountInfo    store.Account
-	marketMap      map[string]*store.MarketEmb
-	marketLock     sync.Mutex
-	balanceMap     map[string]*store.BalanceEmb
-	balanceLock    sync.Mutex
-	symbolMap      map[string]chan int64
-	symbolLock     sync.Mutex
+	cfg         *config.Config
+	log         *zap.Logger
+	ctx         context.Context
+	store       *store.Store
+	nc          *nats.Conn
+	ec          *nats.EncodedConn
+	client      *ftxapi.Client
+	accountInfo store.Account
+
+	marketMap   map[string]*store.MarketEmb
+	marketLock  sync.Mutex
+	balanceMap  map[string]*store.BalanceEmb
+	balanceLock sync.Mutex
+
+	symbolMap sync.Map
+	//symbolMap      map[string]chan int64
+	//symbolLock     sync.Mutex
+
 	ws             *ftxapi.WebsocketService
 	checkBalanceCh chan bool
 	placeConfig    PlaceConfig
@@ -69,15 +73,15 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 	ws := ftxapi.NewWebsocketService(cfg.Ftx.Key, cfg.Ftx.Secret, ftxapi.WebsocketEndpoint, log.Sugar()).AutoReconnect()
 	ws.SubAccount(cfg.Ftx.SubAccount)
 	return &Placer{
-		cfg:            cfg,
-		log:            log,
-		ctx:            ctx,
-		store:          sto,
-		client:         client,
-		ws:             ws,
-		marketMap:      make(map[string]*store.MarketEmb),
-		balanceMap:     make(map[string]*store.BalanceEmb),
-		symbolMap:      make(map[string]chan int64),
+		cfg:        cfg,
+		log:        log,
+		ctx:        ctx,
+		store:      sto,
+		client:     client,
+		ws:         ws,
+		marketMap:  make(map[string]*store.MarketEmb),
+		balanceMap: make(map[string]*store.BalanceEmb),
+		//symbolMap:      make(map[string]chan int64),
 		checkBalanceCh: make(chan bool, 20),
 		saveSbCh:       make(chan *store.Surebet, 100),
 		placeConfig: PlaceConfig{
@@ -167,11 +171,19 @@ func (p *Placer) Run() error {
 
 func (p *Placer) printLockStatus() {
 	var lockSym []string
-	for sym, ch := range p.symbolMap {
+	p.symbolMap.Range(func(key, value interface{}) bool {
+		sym := key.(string)
+		ch := value.(chan int64)
 		if len(ch) == 1 {
 			lockSym = append(lockSym, sym)
 		}
-	}
+		return true
+	})
+	//for sym, ch := range p.symbolMap {
+	//	if len(ch) == 1 {
+	//		lockSym = append(lockSym, sym)
+	//	}
+	//}
 	if len(lockSym) > 0 {
 		p.log.Info("active_locks", zap.Any("list", lockSym))
 	}

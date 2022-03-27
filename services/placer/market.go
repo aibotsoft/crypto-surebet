@@ -54,13 +54,15 @@ func (p *Placer) Unlock(symbol string) {
 func (p *Placer) Lock(symbol string) chan int64 {
 	//p.symbolLock.Lock()
 	//defer p.symbolLock.Unlock()
-	l, ok := p.symbolMap[symbol]
-	if ok {
-		return l
-	}
+	l, _ := p.symbolMap.LoadOrStore(symbol, make(chan int64, 1))
+	//if ok {
+	//	return l.(chan int64)
+	//}
+	return l.(chan int64)
+
 	//p.log.Info("lock", zap.String("s", symbol))
-	p.symbolMap[symbol] = make(chan int64, 1)
-	return p.symbolMap[symbol]
+	//p.symbolMap[symbol] = make(chan int64, 1)
+	//return p.symbolMap[symbol]
 
 	//got, ok := p.symbolMap[symbol]
 	//if !ok {
