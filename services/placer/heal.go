@@ -98,7 +98,7 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 		p.surebetMap.Delete(*order.ClientID)
 		id := <-lock
 		p.log.Info("unlock", zap.Int64("id", id), zap.String("m", order.Market),
-			zap.Int64("elapsed", (id-time.Now().UnixNano())/1000000))
+			zap.Int64("elapsed", (time.Now().UnixNano()-id)/1000000))
 	}()
 	if order.FilledSize == 0 {
 		return

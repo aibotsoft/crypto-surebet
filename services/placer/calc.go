@@ -135,7 +135,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	var size decimal.Decimal
 	if sb.PlaceParams.Side == store.SideSell {
 		sb.PlaceParams.Price = sb.Price.Sub(sb.ProfitPriceDiff).Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
-		sb.BinVolume = sb.BinPrice.Mul(sb.BinTicker.AskQty)
+		sb.BinVolume = sb.BinPrice.Mul(sb.BinTicker.AskQty).Floor()
 		size = decimal.Min(
 			maxSize,
 			sb.MaxStake.Div(sb.PlaceParams.Price),
@@ -144,7 +144,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		)
 	} else {
 		sb.PlaceParams.Price = sb.Price.Add(sb.ProfitPriceDiff).Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
-		sb.BinVolume = sb.BinPrice.Mul(sb.BinTicker.BidQty)
+		sb.BinVolume = sb.BinPrice.Mul(sb.BinTicker.BidQty).Floor()
 		size = decimal.Min(
 			maxSize,
 			sb.MaxStake.Div(sb.PlaceParams.Price),
