@@ -9,7 +9,6 @@ import (
 	"github.com/jinzhu/copier"
 	"github.com/nats-io/nats.go"
 	"github.com/shopspring/decimal"
-	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"runtime"
 	"sync"
@@ -22,7 +21,8 @@ const usdt = "USDT"
 var d100 = decimal.RequireFromString("100")
 var d2 = decimal.RequireFromString("2")
 var d10 = decimal.RequireFromString("10")
-var placeCounter, fillsCounter atomic.Int64
+
+//var placeCounter, fillsCounter atomic.Int64
 
 type Placer struct {
 	cfg            *config.Config
@@ -37,7 +37,7 @@ type Placer struct {
 	marketLock     sync.Mutex
 	balanceMap     map[string]*store.BalanceEmb
 	balanceLock    sync.Mutex
-	symbolMap      map[string]chan bool
+	symbolMap      map[string]chan int64
 	symbolLock     sync.Mutex
 	ws             *ftxapi.WebsocketService
 	checkBalanceCh chan bool
@@ -77,7 +77,7 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 		ws:             ws,
 		marketMap:      make(map[string]*store.MarketEmb),
 		balanceMap:     make(map[string]*store.BalanceEmb),
-		symbolMap:      make(map[string]chan bool),
+		symbolMap:      make(map[string]chan int64),
 		checkBalanceCh: make(chan bool, 20),
 		saveSbCh:       make(chan *store.Surebet, 100),
 		placeConfig: PlaceConfig{
@@ -207,7 +207,13 @@ func (p *Placer) ConnectAndSubscribe() error {
 	return nil
 }
 func (p *Placer) SurebetHandler(sb *store.Surebet) {
-	go p.Calc(sb)
+	go func() {
+		lock := p.Calc(sb)
+		if lock != nil {
+			<-lock
+			//p.log.Debug("unlock", zap.Int64("id", id))
+		}
+	}()
 }
 
 func (p *Placer) AccountInfo() error {

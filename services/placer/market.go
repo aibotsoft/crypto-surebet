@@ -51,7 +51,7 @@ func (p *Placer) Unlock(symbol string) {
 	//p.symbolMap[symbol].Unlock()
 	//delete(p.symbolMap, symbol)
 }
-func (p *Placer) Lock(symbol string) chan bool {
+func (p *Placer) Lock(symbol string) chan int64 {
 	//p.symbolLock.Lock()
 	//defer p.symbolLock.Unlock()
 	l, ok := p.symbolMap[symbol]
@@ -59,7 +59,7 @@ func (p *Placer) Lock(symbol string) chan bool {
 		return l
 	}
 	//p.log.Info("lock", zap.String("s", symbol))
-	p.symbolMap[symbol] = make(chan bool, 1)
+	p.symbolMap[symbol] = make(chan int64, 1)
 	return p.symbolMap[symbol]
 
 	//got, ok := p.symbolMap[symbol]

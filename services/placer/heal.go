@@ -92,11 +92,17 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 		p.healMap.Store(h.PlaceParams.ClientID, h)
 		p.placeHeal(&h)
 		return
-
-	} else if order.FilledSize == 0 {
-		p.surebetMap.Delete(*order.ClientID)
-		return
 	}
+	lock := p.Lock(symbolFromMarket(order.Market))
+	defer func() {
+		p.surebetMap.Delete(*order.ClientID)
+		id := <-lock
+		p.log.Info("unlock", zap.Int64("id", id), zap.String("m", order.Market))
+	}()
+	//if order.FilledSize == 0 {
+	//	p.surebetMap.Delete(*order.ClientID)
+	//	return
+	//}
 	got, ok := p.surebetMap.Load(*order.ClientID)
 	if !ok {
 		p.log.Warn("not_found_surebet_in_map", zap.Any("order", order))
@@ -139,4 +145,8 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 	}
 	p.healMap.Store(h.PlaceParams.ClientID, h)
 	p.placeHeal(&h)
+}
+func symbolFromMarket(m string) string {
+	split := strings.Split(m, "/")
+	return split[0]
 }

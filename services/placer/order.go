@@ -130,7 +130,6 @@ func (p *Placer) GetOrdersHistory() error {
 	return nil
 }
 func (p *Placer) processFills(fills *ftxapi.WsFillsEvent) {
-	fillsCounter.Inc()
 	p.log.Debug("fills", zap.Any("data", fills.Data))
 	var data store.Fills
 	err := copier.Copy(&data, fills.Data)

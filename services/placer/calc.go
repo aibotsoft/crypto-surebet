@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/aibotsoft/crypto-surebet/pkg/store"
-	"github.com/jinzhu/copier"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 	"runtime"
@@ -12,7 +11,7 @@ import (
 	"time"
 )
 
-func (p *Placer) Calc(sb *store.Surebet) {
+func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	sb.StartTime = time.Now().UnixNano()
 	sb.Market = p.FindMarket(sb.FtxTicker.Symbol)
 
@@ -21,7 +20,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 
 	lock := p.Lock(sb.Market.BaseCurrency)
 	select {
-	case lock <- true:
+	case lock <- sb.ID:
 		//p.log.Info("got_lock",
 		//	zap.String("s", sb.Market.BaseCurrency),
 		//	zap.Int64("id", sb.ID),
@@ -37,11 +36,11 @@ func (p *Placer) Calc(sb *store.Surebet) {
 			zap.Duration("max_lock_time", p.cfg.Service.MaxLockTime),
 			zap.Int("goroutine", runtime.NumGoroutine()),
 		)
-		return
+		return nil
 	}
-	defer func() {
-		<-lock
-	}()
+	//defer func() {
+	//	<-lock
+	//}()
 	sb.MaxStake = p.placeConfig.MaxStake
 	sb.TargetProfit = p.placeConfig.TargetProfit
 	sb.TargetAmount = p.placeConfig.TargetAmount
@@ -110,7 +109,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 		//	//zap.Any("real_fee", sb.RealFee),
 		//	zap.Any("profit_inc", sb.ProfitInc),
 		//)
-		return
+		return lock
 	}
 	if time.Duration(sb.StartTime-sb.ID) > p.cfg.Service.SendReceiveMaxDelay {
 		p.log.Info("lock_time_too_high",
@@ -118,7 +117,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 			zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
 			zap.Duration("send_receive_max_delay", p.cfg.Service.SendReceiveMaxDelay),
 		)
-		return
+		return lock
 	}
 	if sb.ID != sb.BinTicker.ReceiveTime && time.Duration(sb.StartTime-sb.LastBinTime) > p.cfg.Service.BinanceMaxStaleTime {
 		p.log.Info("binance_stale",
@@ -126,7 +125,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 			zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)),
 			zap.Duration("binance_max_stale_time", p.cfg.Service.BinanceMaxStaleTime),
 			zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)))
-		return
+		return lock
 	}
 	profitDiff := sb.ProfitSubAvg.Sub(sb.RequiredProfit).Div(p.placeConfig.ProfitDiffRatio)
 	sb.ProfitPriceDiff = sb.Price.Mul(profitDiff).DivRound(d100, 6)
@@ -168,7 +167,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 			zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
 			//zap.Int("goroutine", runtime.NumGoroutine()),
 		)
-		return
+		return lock
 	}
 	if time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime) < -p.cfg.Service.BinanceMaxDelay {
 		p.log.Info("binance_too_delayed",
@@ -179,7 +178,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 			zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)),
 			zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
 		)
-		return
+		return lock
 	}
 	sb.MakerFee = p.accountInfo.MakerFee
 	sb.TakerFee = p.accountInfo.TakerFee
@@ -218,23 +217,22 @@ func (p *Placer) Calc(sb *store.Surebet) {
 			zap.Any("ftx_spread", sb.FtxSpread),
 			zap.Any("bin_spread", sb.BinSpread),
 		)
-		return
+		return lock
 	}
 
 	p.surebetMap.Store(sb.PlaceParams.ClientID, sb)
 	order, err := p.PlaceOrder(p.ctx, sb.PlaceParams)
 	if err != nil {
 		p.log.Warn("place_error", zap.Error(err), zap.Any("sb", sb), zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)))
-		return
+		return lock
 	}
 	sb.Done = time.Now().UnixNano()
 	sb.OrderID = order.ID
 	p.saveSbCh <- sb
-	var o store.Order
-	_ = copier.Copy(&o, order)
-	p.orderMap.Store(o.ID, o)
+	//var o store.Order
+	//_ = copier.Copy(&o, order)
+	//p.orderMap.Store(o.ID, o)
 
-	placeCounter.Inc()
 	p.log.Info("bet",
 		zap.Any("id", sb.ID),
 		zap.Any("m", sb.PlaceParams.Market),
@@ -282,4 +280,5 @@ func (p *Placer) Calc(sb *store.Surebet) {
 		}
 	}
 	p.checkBalanceCh <- true
+	return nil
 }
