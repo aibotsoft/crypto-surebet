@@ -123,8 +123,8 @@ func (p *Placer) GetOrdersHistory() error {
 	p.log.Debug("get_orders_done",
 		zap.Int("count", len(resp)),
 		//zap.Bool("has_more", b),
-		zap.Duration("api_time", startSave.Sub(start)),
-		zap.Duration("save_time", time.Since(startSave)),
+		zap.Int64("api_time_ms", startSave.Sub(start).Milliseconds()),
+		zap.Int64("save_time_ms", time.Since(startSave).Milliseconds()),
 		zap.Int("goroutine", runtime.NumGoroutine()),
 	)
 	return nil

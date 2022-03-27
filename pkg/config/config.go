@@ -14,6 +14,7 @@ type Config struct {
 		BinFtxVolumeRatio   int64         `json:"bin_ftx_volume_ratio"`
 		ProfitDiffRatio     int64         `json:"profit_diff_ratio"`
 		AvgPriceDiffRatio   int64         `json:"avg_price_diff_ratio"`
+		ProfitIncRatio      int64         `json:"profit_inc_ratio"`
 		MaxStake            int64         `json:"max_stake"`
 		ReferralRate        float64       `json:"referral_rate"`
 		BinanceMaxDelay     time.Duration `json:"binance_max_delay"`

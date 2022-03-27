@@ -55,6 +55,7 @@ type PlaceConfig struct {
 	BinFtxVolumeRatio decimal.Decimal
 	ProfitDiffRatio   decimal.Decimal
 	AvgPriceDiffRatio decimal.Decimal
+	ProfitIncRatio    decimal.Decimal
 }
 
 func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *store.Store) (*Placer, error) {
@@ -87,6 +88,7 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 			ReferralRate:      decimal.NewFromFloat(cfg.Service.ReferralRate),
 			ProfitDiffRatio:   decimal.NewFromInt(cfg.Service.ProfitDiffRatio),
 			AvgPriceDiffRatio: decimal.NewFromInt(cfg.Service.AvgPriceDiffRatio),
+			ProfitIncRatio:    decimal.NewFromInt(cfg.Service.ProfitIncRatio),
 		},
 	}, nil
 }
@@ -150,6 +152,7 @@ func (p *Placer) Run() error {
 			}
 		case <-balanceTick:
 			_ = p.GetBalances()
+			p.printLockStatus()
 		case <-marketTick:
 			_ = p.GetMarkets()
 		case <-orderTick:
@@ -162,6 +165,17 @@ func (p *Placer) Run() error {
 	}
 }
 
+func (p *Placer) printLockStatus() {
+	var lockSym []string
+	for sym, ch := range p.symbolMap {
+		if len(ch) == 1 {
+			lockSym = append(lockSym, sym)
+		}
+	}
+	if len(lockSym) > 0 {
+		p.log.Info("active_locks", zap.Any("list", lockSym))
+	}
+}
 func (p *Placer) handler(res ftxapi.WsReponse) {
 	if res.Orders != nil {
 		p.processOrder(res.Orders)

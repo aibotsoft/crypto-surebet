@@ -53,7 +53,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	sb.BaseTotal = sb.BaseBalance.Free.Add(sb.BaseOpenBuy).Sub(sb.BaseOpenSell)
 	//sb.AmountCoef = sb.BaseBalance.UsdValue.Div(sb.MaxStake).Sub(sb.TargetAmount).Mul(sb.ProfitInc).Round(5)
 	sb.ProfitInc = sb.BaseOpenBuy.Add(sb.BaseOpenSell).DivRound(sb.BaseTotal, 4)
-	sb.AmountCoef = sb.ProfitInc.Mul(d2).Mul(sb.TargetProfit).Round(4)
+	sb.AmountCoef = sb.ProfitInc.Mul(p.placeConfig.ProfitIncRatio).Mul(sb.TargetProfit).Round(4)
 
 	sb.QuoteBalance = p.FindBalance(sb.Market.QuoteCurrency)
 
@@ -190,19 +190,6 @@ func (p *Placer) Calc(sb *store.Surebet) {
 	sb.PlaceParams.Ioc = true
 	sb.PlaceParams.PostOnly = false
 	sb.PlaceParams.ClientID = fmt.Sprintf("%d:%s", sb.ID, BET)
-
-	//lockID, gotLock := p.Lock(sb.Market.BaseCurrency, sb.ID)
-	//if !gotLock {
-	//	p.log.Debug("not_got_lock",
-	//		zap.String("symbol", sb.FtxTicker.Symbol),
-	//		zap.Any("id", sb.ID),
-	//		zap.Any("lockID", lockID),
-	//		zap.Int("goroutine", runtime.NumGoroutine()),
-	//	)
-	//	return
-	//}
-	//defer p.Unlock(sb.Market.BaseCurrency)
-
 	sb.BeginPlace = time.Now().UnixNano()
 
 	if p.cfg.Service.DemoMode {
@@ -277,7 +264,7 @@ func (p *Placer) Calc(sb *store.Surebet) {
 		zap.Any("bin_sp", sb.BinSpread),
 		//zap.Int64("place_count", placeCounter.Load()),
 		//zap.Int64("fills_count", fillsCounter.Load()),
-		zap.Duration("el", time.Duration(sb.Done-sb.BeginPlace)),
+		zap.Int64("el", time.Duration(sb.Done-sb.BeginPlace).Milliseconds()),
 	)
 	//p.log.Info("success",
 	//	zap.Any("sb", sb),

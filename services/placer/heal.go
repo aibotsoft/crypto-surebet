@@ -17,14 +17,22 @@ const (
 )
 
 func (p *Placer) placeHeal(h *store.Heal) {
-	p.log.Info("heal",
-		zap.Any("place", h.PlaceParams),
-		zap.Any("filled_size", h.FilledSize),
-		zap.Any("avg_fill_price", h.AvgFillPrice),
-		zap.Any("fee_part", h.FeePart),
-		zap.Any("profit_part", h.ProfitPart),
-	)
 	for i := 0; i < 6; i++ {
+		p.log.Info("heal",
+			zap.Any("id", h.ID),
+			zap.Any("m", h.PlaceParams.Market),
+			zap.Any("s", h.PlaceParams.Side),
+			zap.Any("price", h.PlaceParams.Price),
+			zap.Any("size", h.PlaceParams.Size),
+			zap.Any("v", h.PlaceParams.Size.Mul(h.PlaceParams.Price)),
+			//zap.Any("place", h.PlaceParams),
+			//zap.Any("filled_size", h.FilledSize),
+			//zap.Any("avg_fill_price", h.AvgFillPrice),
+			//zap.Any("fee_part", h.FeePart),
+			zap.Any("p_part", h.ProfitPart),
+			zap.Any("msg", h.ErrorMsg),
+		)
+
 		resp, err := p.PlaceOrder(p.ctx, h.PlaceParams)
 		if err != nil {
 			p.log.Error("heal_place_error", zap.Error(err))
