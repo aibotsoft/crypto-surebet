@@ -24,7 +24,7 @@ func (p *Placer) placeHeal(h *store.Heal) {
 			zap.Any("s", h.PlaceParams.Side),
 			zap.Any("price", h.PlaceParams.Price),
 			zap.Any("size", h.PlaceParams.Size),
-			zap.Any("v", h.PlaceParams.Size.Mul(h.PlaceParams.Price)),
+			zap.Any("v", h.PlaceParams.Size.Mul(h.PlaceParams.Price).Floor()),
 			//zap.Any("place", h.PlaceParams),
 			//zap.Any("filled_size", h.FilledSize),
 			//zap.Any("avg_fill_price", h.AvgFillPrice),
@@ -129,10 +129,12 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 
 	if sb.PlaceParams.Side == store.SideSell {
 		h.PlaceParams.Side = store.SideBuy
-		h.PlaceParams.Price = h.AvgFillPrice.Mul(h.FilledSize).Sub(h.FeePart).Sub(h.ProfitPart).Div(h.PlaceParams.Size)
+		price := h.AvgFillPrice.Mul(h.FilledSize).Sub(h.FeePart).Sub(h.ProfitPart).Div(h.PlaceParams.Size)
+		h.PlaceParams.Price = price.Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
 	} else {
 		h.PlaceParams.Side = store.SideSell
-		h.PlaceParams.Price = h.AvgFillPrice.Mul(h.FilledSize).Add(h.FeePart).Add(h.ProfitPart).Div(h.PlaceParams.Size)
+		price := h.AvgFillPrice.Mul(h.FilledSize).Add(h.FeePart).Add(h.ProfitPart).Div(h.PlaceParams.Size)
+		h.PlaceParams.Price = price.Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
 	}
 	if h.PlaceParams.Size.LessThan(sb.Market.MinProvideSize) {
 		p.log.Warn("size_too_small_to_heal", zap.Any("h", h))
