@@ -38,7 +38,6 @@ func main() {
 	defer func() {
 		log.Info("closing_services...")
 		cancel()
-		p.Close()
 		err2 := sto.Close()
 		if err2 != nil {
 			log.Warn("close_db_error", zap.Error(err))

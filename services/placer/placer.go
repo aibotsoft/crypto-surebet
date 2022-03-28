@@ -44,7 +44,7 @@ type Placer struct {
 	//symbolLock     sync.Mutex
 
 	ws             *ftxapi.WebsocketService
-	checkBalanceCh chan bool
+	checkBalanceCh chan int64
 	placeConfig    PlaceConfig
 	saveSbCh       chan *store.Surebet
 	surebetMap     sync.Map
@@ -82,7 +82,7 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 		marketMap:  make(map[string]*store.MarketEmb),
 		balanceMap: make(map[string]*store.BalanceEmb),
 		//symbolMap:      make(map[string]chan int64),
-		checkBalanceCh: make(chan bool, 20),
+		checkBalanceCh: make(chan int64, 20),
 		saveSbCh:       make(chan *store.Surebet, 100),
 		placeConfig: PlaceConfig{
 			MaxStake:          decimal.NewFromInt(cfg.Service.MaxStake),
@@ -142,6 +142,7 @@ func (p *Placer) Run() error {
 	balanceTick := time.Tick(time.Minute * 2)
 	marketTick := time.Tick(time.Minute * 5)
 	orderTick := time.Tick(time.Minute * 10)
+	var lastBalanceCheck time.Time
 	for {
 		select {
 		case sb := <-p.saveSbCh:
@@ -149,11 +150,25 @@ func (p *Placer) Run() error {
 			if err != nil {
 				p.log.Warn("save_sb_error", zap.Error(err))
 			}
-		case <-p.checkBalanceCh:
+		case t := <-p.checkBalanceCh:
+			if time.Since(lastBalanceCheck) < time.Millisecond*50 {
+				//p.log.Info("repeat_balance_check",
+				//	zap.Any("ch_time", t),
+				//	zap.Any("diff", time.Since(lastBalanceCheck)),
+				//	zap.Any("lastBalanceCheck", lastBalanceCheck),
+				//	zap.Any("t", time.Now()),
+				//)
+				continue
+			}
+			//p.log.Info("checkBalance",
+			//	zap.Any("t", t),
+			//	zap.Any("t", time.Now().UnixNano()),
+			//)
 			err := p.GetBalances()
 			if err != nil {
-				p.log.Info("get_balances_error", zap.Error(err))
+				p.log.Info("get_balances_error", zap.Error(err), zap.Int64("checkBalanceTime", t))
 			}
+			lastBalanceCheck = time.Now()
 		case <-balanceTick:
 			_ = p.GetBalances()
 			p.printLockStatus()

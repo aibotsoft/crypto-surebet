@@ -217,6 +217,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 			zap.Any("ftx_spread", sb.FtxSpread),
 			zap.Any("bin_spread", sb.BinSpread),
 		)
+		p.checkBalanceCh <- time.Now().UnixNano()
 		return lock
 	}
 
@@ -279,6 +280,6 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 			p.BalanceAdd(sb.Market.BaseCurrency, sb.Volume, sb.PlaceParams.Size)
 		}
 	}
-	p.checkBalanceCh <- true
+	p.checkBalanceCh <- sb.Done
 	return nil
 }
