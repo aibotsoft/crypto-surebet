@@ -2,8 +2,10 @@ package placer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/aibotsoft/crypto-surebet/pkg/store"
+	ftxapi "github.com/aibotsoft/ftx-api"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 	"runtime"
@@ -154,29 +156,29 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	}
 	if size.LessThan(sb.Market.MinProvideSize) {
 		p.log.Info("stake_too_low",
-			zap.String("symbol", sb.FtxTicker.Symbol),
-			zap.Any("side", sb.PlaceParams.Side),
-			zap.Any("size", size),
-			zap.Any("min_provide", sb.Market.MinProvideSize),
-			zap.Int64("base_usd_value", sb.BaseBalance.UsdValue.IntPart()),
-			zap.Int64("quote_free", sb.QuoteBalance.Free.IntPart()),
-			zap.Any("bin_volume", sb.BinVolume),
-			zap.Any("base_free", sb.BaseBalance.Free),
-			zap.Any("required_profit", sb.RequiredProfit),
-			zap.Any("profit_sub_avg", sb.ProfitSubAvg),
-			zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)),
-			//zap.Int("goroutine", runtime.NumGoroutine()),
+			zap.String("sym", sb.FtxTicker.Symbol),
+			zap.Any("sd", sb.PlaceParams.Side),
+			zap.Any("sz", size),
+			zap.Any("min_size", sb.Market.MinProvideSize),
+			zap.Any("b_free", sb.BaseBalance.Free),
+			zap.Int64("q_free", sb.QuoteBalance.Free.IntPart()),
+			zap.Any("bin_vol", sb.BinVolume),
+			zap.Any("clear_p", sb.ProfitSubAvg),
+			zap.Any("req_p", sb.RequiredProfit),
+			zap.Any("avg_price_diff", sb.AvgPriceDiff),
+			zap.Any("a_coef", sb.AmountCoef),
 		)
 		return lock
 	}
 	if time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime) < -p.cfg.Service.BinanceMaxDelay {
-		p.log.Info("binance_too_delayed",
-			zap.String("symbol", sb.FtxTicker.Symbol),
-			zap.Duration("bin_ftx_diff", time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime)),
+		p.log.Info("binance_delayed",
+			zap.String("s", sb.FtxTicker.Symbol),
+			zap.Int64("bin_ftx_diff", time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime).Milliseconds()),
 			zap.Duration("binance_max_delay", -p.cfg.Service.BinanceMaxDelay),
 			zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)),
-			zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)),
+			zap.Duration("ftx_receive_vs_server", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)),
 			zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
+			zap.Any("clear_p", sb.ProfitSubAvg),
 		)
 		return lock
 	}
@@ -223,11 +225,15 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 
 	p.surebetMap.Store(sb.PlaceParams.ClientID, sb)
 	order, err := p.PlaceOrder(p.ctx, sb.PlaceParams)
+	sb.Done = time.Now().UnixNano()
 	if err != nil {
-		p.log.Warn("place_error", zap.Error(err), zap.Any("sb", sb), zap.Duration("elapsed", time.Duration(time.Now().UnixNano()-sb.StartTime)))
+		if errors.Is(err, ftxapi.ErrorRateLimit) {
+			p.log.Warn("bet_error", zap.Error(err), zap.Duration("elapsed", time.Duration(sb.Done-sb.StartTime)))
+		} else {
+			p.log.Warn("bet_error", zap.Error(err), zap.Any("sb", sb), zap.Duration("elapsed", time.Duration(sb.Done-sb.StartTime)))
+		}
 		return lock
 	}
-	sb.Done = time.Now().UnixNano()
 	sb.OrderID = order.ID
 	p.saveSbCh <- sb
 	//var o store.Order
@@ -238,9 +244,9 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		zap.Any("id", sb.ID),
 		zap.Any("m", sb.PlaceParams.Market),
 		zap.Any("s", sb.PlaceParams.Side),
-		zap.Any("price", sb.PlaceParams.Price),
-		zap.Any("size", sb.PlaceParams.Size),
-		zap.Any("v", sb.Volume),
+		zap.Any("pr", sb.PlaceParams.Price),
+		zap.Any("sz", sb.PlaceParams.Size),
+		zap.Any("v", sb.Volume.IntPart()),
 		zap.Any("bv", sb.BinVolume),
 		//zap.Any("target_amount", sb.TargetAmount),
 		//zap.Any("target_p", sb.TargetProfit),

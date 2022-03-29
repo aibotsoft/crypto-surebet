@@ -18,21 +18,6 @@ const (
 
 func (p *Placer) placeHeal(h *store.Heal) {
 	for i := 0; i < 6; i++ {
-		p.log.Info("heal",
-			zap.Any("id", h.ID),
-			zap.Any("m", h.PlaceParams.Market),
-			zap.Any("s", h.PlaceParams.Side),
-			zap.Any("price", h.PlaceParams.Price),
-			zap.Any("size", h.PlaceParams.Size),
-			zap.Any("v", h.PlaceParams.Size.Mul(h.PlaceParams.Price).Floor()),
-			//zap.Any("place", h.PlaceParams),
-			//zap.Any("filled_size", h.FilledSize),
-			//zap.Any("avg_fill_price", h.AvgFillPrice),
-			//zap.Any("fee_part", h.FeePart),
-			zap.Any("p_part", h.ProfitPart),
-			zap.Any("msg", h.ErrorMsg),
-		)
-
 		resp, err := p.PlaceOrder(p.ctx, h.PlaceParams)
 		if err != nil {
 			p.log.Error("heal_place_error", zap.Error(err))
@@ -47,9 +32,19 @@ func (p *Placer) placeHeal(h *store.Heal) {
 			break
 		}
 	}
-
 	h.Done = time.Now().UnixNano()
-
+	p.log.Info("heal",
+		zap.Any("id", h.ID),
+		zap.Any("m", h.PlaceParams.Market),
+		zap.Any("s", h.PlaceParams.Side),
+		zap.Any("pr", h.PlaceParams.Price),
+		zap.Any("sz", h.PlaceParams.Size),
+		zap.Any("v", h.PlaceParams.Size.Mul(h.PlaceParams.Price).Floor()),
+		zap.Any("p_part", h.ProfitPart),
+		zap.Any("msg", h.ErrorMsg),
+		zap.Any("c_id", h.PlaceParams.ClientID),
+		zap.Int64("el", (h.Done-h.ID)/1000000),
+	)
 	err := p.store.SaveHeal(h)
 	if err != nil {
 		p.log.Error("save_heal_error", zap.Error(err))
@@ -97,7 +92,7 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 	defer func() {
 		p.surebetMap.Delete(*order.ClientID)
 		id := <-lock
-		p.log.Info("unlock", zap.Int64("id", id), zap.String("m", order.Market),
+		p.log.Debug("unlock", zap.Int64("id", id), zap.String("m", order.Market),
 			zap.Int64("elapsed", (time.Now().UnixNano()-id)/1000000))
 	}()
 	if order.FilledSize == 0 {
