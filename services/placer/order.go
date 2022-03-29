@@ -54,8 +54,10 @@ func (p *Placer) processOrder(order *ftxapi.WsOrdersEvent) {
 		p.log.Error("copy_order_error", zap.Error(err))
 		return
 	}
-	if o.PostOnly == true && o.Size > o.RemainingSize {
-		p.log.Warn("order_size_reduce", zap.Any("order", o))
+	if o.PostOnly == true {
+		if o.Size > o.RemainingSize + o.FilledSize {
+			p.log.Warn("order_size_reduce", zap.Any("order", o))
+		}
 	}
 	if o.Status == store.OrderStatusClosed {
 		go p.heal(order.Data)
