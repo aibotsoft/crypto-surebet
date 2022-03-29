@@ -55,7 +55,7 @@ func (p *Placer) processOrder(order *ftxapi.WsOrdersEvent) {
 		return
 	}
 	if o.PostOnly == true {
-		if o.Size > o.RemainingSize + o.FilledSize {
+		if o.Size > o.RemainingSize+o.FilledSize {
 			p.log.Warn("order_size_reduce", zap.Any("order", o))
 		}
 	}
