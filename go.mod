@@ -10,7 +10,6 @@ require (
 	github.com/nats-io/nats.go v1.13.1-0.20220121202836-972a071d373d
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.7.0
-	go.uber.org/atomic v1.9.0
 	go.uber.org/zap v1.21.0
 	gorm.io/driver/postgres v1.3.1
 	gorm.io/gorm v1.23.2
@@ -37,6 +36,7 @@ require (
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd // indirect
 	golang.org/x/text v0.3.7 // indirect
@@ -46,6 +46,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
-//replace (
-//	 github.com/aibotsoft/ftx-api => ../ftx-api
-//)
+//replace github.com/aibotsoft/ftx-api => ../ftx-api

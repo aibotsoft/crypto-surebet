@@ -83,9 +83,9 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 
 	sb.AvgPriceDiffRatio = p.placeConfig.AvgPriceDiffRatio
 	if sb.PlaceParams.Side == store.SideBuy {
-		sb.ProfitSubAvg = sb.ProfitSubFee.Sub(sb.AvgPriceDiff.Div(sb.AvgPriceDiffRatio))
+		sb.ProfitSubAvg = sb.ProfitSubFee.Sub(sb.AvgPriceDiff.Div(sb.AvgPriceDiffRatio)).Round(5)
 	} else {
-		sb.ProfitSubAvg = sb.ProfitSubFee.Add(sb.AvgPriceDiff.Div(sb.AvgPriceDiffRatio))
+		sb.ProfitSubAvg = sb.ProfitSubFee.Add(sb.AvgPriceDiff.Div(sb.AvgPriceDiffRatio)).Round(5)
 	}
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
