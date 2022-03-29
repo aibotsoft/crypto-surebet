@@ -115,20 +115,14 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	}
 	if time.Duration(sb.StartTime-sb.ID) > p.cfg.Service.SendReceiveMaxDelay {
 		p.log.Info("lock_time_too_high",
+			zap.Int64("id", sb.ID),
 			zap.String("symbol", sb.FtxTicker.Symbol),
 			zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
 			zap.Duration("send_receive_max_delay", p.cfg.Service.SendReceiveMaxDelay),
 		)
 		return lock
 	}
-	if sb.ID != sb.BinTicker.ReceiveTime && time.Duration(sb.StartTime-sb.LastBinTime) > p.cfg.Service.BinanceMaxStaleTime {
-		p.log.Info("binance_stale",
-			zap.String("symbol", sb.FtxTicker.Symbol),
-			zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)),
-			zap.Duration("binance_max_stale_time", p.cfg.Service.BinanceMaxStaleTime),
-			zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)))
-		return lock
-	}
+
 	profitDiff := sb.ProfitSubAvg.Sub(sb.RequiredProfit).Div(p.placeConfig.ProfitDiffRatio)
 	sb.ProfitPriceDiff = sb.Price.Mul(profitDiff).DivRound(d100, 6)
 
@@ -170,18 +164,27 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		)
 		return lock
 	}
-	if time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime) < -p.cfg.Service.BinanceMaxDelay {
-		p.log.Info("binance_delayed",
-			zap.String("s", sb.FtxTicker.Symbol),
-			zap.Int64("bin_ftx_diff", time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime).Milliseconds()),
-			zap.Duration("binance_max_delay", -p.cfg.Service.BinanceMaxDelay),
-			zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)),
-			zap.Duration("ftx_receive_vs_server", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)),
-			zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
-			zap.Any("clear_p", sb.ProfitSubAvg),
-		)
-		return lock
-	}
+	//if time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime) < -p.cfg.Service.BinanceMaxDelay {
+	//	p.log.Info("binance_delayed",
+	//		zap.String("s", sb.FtxTicker.Symbol),
+	//		zap.Int64("bin_ftx_diff", time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime).Milliseconds()),
+	//		zap.Duration("binance_max_delay", -p.cfg.Service.BinanceMaxDelay),
+	//		zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)),
+	//		zap.Duration("ftx_receive_vs_server", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)),
+	//		zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
+	//		zap.Any("clear_p", sb.ProfitSubAvg),
+	//	)
+	//	return lock
+	//}
+	//if sb.ID != sb.BinTicker.ReceiveTime && time.Duration(sb.StartTime-sb.LastBinTime) > p.cfg.Service.BinanceMaxStaleTime {
+	//	p.log.Info("binance_stale",
+	//		zap.String("symbol", sb.FtxTicker.Symbol),
+	//		zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)),
+	//		zap.Duration("binance_max_stale_time", p.cfg.Service.BinanceMaxStaleTime),
+	//		zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)))
+	//	return lock
+	//}
+
 	sb.MakerFee = p.accountInfo.MakerFee
 	sb.TakerFee = p.accountInfo.TakerFee
 	sb.PlaceParams.Size = size.Div(sb.Market.MinProvideSize).Floor().Mul(sb.Market.MinProvideSize)
