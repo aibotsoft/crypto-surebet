@@ -119,8 +119,6 @@ type Order struct {
 	PostOnly      bool        `json:"postOnly"`
 	ReduceOnly    bool        `json:"reduceOnly"`
 	ClosedAt      *int64      `json:"closed_at"`
-
-	//OrderInfo     *OrderInfo  `json:"order_info,omitempty" gorm:"embedded"`
 }
 type Market struct {
 	UpdatedAt             time.Time `json:"updated_at" gorm:"not null"`
@@ -270,15 +268,16 @@ type Surebet struct {
 	AvgPriceDiffRatio decimal.Decimal `json:"avg_price_diff_ratio" gorm:"type:numeric"`
 }
 type Heal struct {
-	CreatedAt    time.Time       `json:"-" gorm:"not null"`
-	ID           int64           `json:"id" gorm:"primaryKey;autoIncrement:false;not null"`
-	Start        int64           `json:"start" gorm:"not null"`
-	Done         int64           `json:"done" gorm:"not null"`
-	OrderID      int64           `json:"order_id" gorm:"index"`
+	CreatedAt time.Time `json:"-" gorm:"not null"`
+	ID        int64     `json:"id" gorm:"primaryKey;autoIncrement:false;not null"`
+	Start     int64     `json:"start" gorm:"not null"`
+	Done      int64     `json:"done" gorm:"not null"`
+	//OrderID      int64           `json:"order_id" gorm:"index"`
 	PlaceParams  PlaceParamsEmb  `json:"place" gorm:"embedded;embeddedPrefix:place_"`
 	FilledSize   decimal.Decimal `json:"filled_size" gorm:"type:numeric not null"`
 	AvgFillPrice decimal.Decimal `json:"avg_fill_price" gorm:"type:numeric not null"`
 	FeePart      decimal.Decimal `json:"fee_part" gorm:"type:numeric not null"`
 	ProfitPart   decimal.Decimal `json:"profit_part" gorm:"type:numeric not null"`
 	ErrorMsg     *string         `json:"error_msg"`
+	Orders       []*Order        `json:"orders" gorm:"many2many:heal_orders;"`
 }

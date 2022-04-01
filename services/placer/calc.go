@@ -40,9 +40,6 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		)
 		return nil
 	}
-	//defer func() {
-	//	<-lock
-	//}()
 	sb.MaxStake = p.placeConfig.MaxStake
 	sb.TargetProfit = p.placeConfig.TargetProfit
 	sb.TargetAmount = p.placeConfig.TargetAmount
@@ -150,7 +147,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	}
 	if size.LessThan(sb.Market.MinProvideSize) {
 		p.log.Info("stake_too_low",
-			zap.String("sym", sb.FtxTicker.Symbol),
+			zap.String("s", sb.FtxTicker.Symbol),
 			zap.Any("sd", sb.PlaceParams.Side),
 			zap.Any("sz", size),
 			zap.Any("min_size", sb.Market.MinProvideSize),
@@ -164,27 +161,6 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		)
 		return lock
 	}
-	//if time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime) < -p.cfg.Service.BinanceMaxDelay {
-	//	p.log.Info("binance_delayed",
-	//		zap.String("s", sb.FtxTicker.Symbol),
-	//		zap.Int64("bin_ftx_diff", time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime).Milliseconds()),
-	//		zap.Duration("binance_max_delay", -p.cfg.Service.BinanceMaxDelay),
-	//		zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)),
-	//		zap.Duration("ftx_receive_vs_server", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)),
-	//		zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
-	//		zap.Any("clear_p", sb.ProfitSubAvg),
-	//	)
-	//	return lock
-	//}
-	//if sb.ID != sb.BinTicker.ReceiveTime && time.Duration(sb.StartTime-sb.LastBinTime) > p.cfg.Service.BinanceMaxStaleTime {
-	//	p.log.Info("binance_stale",
-	//		zap.String("symbol", sb.FtxTicker.Symbol),
-	//		zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)),
-	//		zap.Duration("binance_max_stale_time", p.cfg.Service.BinanceMaxStaleTime),
-	//		zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)))
-	//	return lock
-	//}
-
 	sb.MakerFee = p.accountInfo.MakerFee
 	sb.TakerFee = p.accountInfo.TakerFee
 	sb.PlaceParams.Size = size.Div(sb.Market.MinProvideSize).Floor().Mul(sb.Market.MinProvideSize)
@@ -222,7 +198,8 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 			zap.Any("ftx_spread", sb.FtxSpread),
 			zap.Any("bin_spread", sb.BinSpread),
 		)
-		p.checkBalanceCh <- time.Now().UnixNano()
+		time.Sleep(time.Millisecond * 50)
+		//p.checkBalanceCh <- time.Now().UnixNano()
 		return lock
 	}
 
@@ -231,7 +208,10 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	sb.Done = time.Now().UnixNano()
 	if err != nil {
 		if errors.Is(err, ftxapi.ErrorRateLimit) {
-			p.log.Warn("bet_error", zap.Error(err), zap.Duration("elapsed", time.Duration(sb.Done-sb.StartTime)))
+			p.log.Warn("bet_error",
+				zap.Error(err),
+				zap.String("s", sb.FtxTicker.Symbol),
+				zap.Duration("elapsed", time.Duration(sb.Done-sb.StartTime)))
 		} else {
 			p.log.Warn("bet_error", zap.Error(err), zap.Any("sb", sb), zap.Duration("elapsed", time.Duration(sb.Done-sb.StartTime)))
 		}
@@ -274,12 +254,6 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		//zap.Int64("fills_count", fillsCounter.Load()),
 		zap.Int64("el", time.Duration(sb.Done-sb.BeginPlace).Milliseconds()),
 	)
-	//p.log.Info("success",
-	//	zap.Any("sb", sb),
-	//	zap.Int64("place_count", placeCounter.Load()),
-	//	zap.Int64("fills_count", fillsCounter.Load()),
-	//	zap.Duration("place_elapsed", time.Duration(sb.Done-sb.BeginPlace)),
-	//)
 	if order != nil {
 		if sb.PlaceParams.Side == store.SideSell {
 			p.BalanceAdd(sb.Market.QuoteCurrency, sb.Volume, sb.Volume)
@@ -292,3 +266,24 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	p.checkBalanceCh <- sb.Done
 	return nil
 }
+
+//if time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime) < -p.cfg.Service.BinanceMaxDelay {
+//	p.log.Info("binance_delayed",
+//		zap.String("s", sb.FtxTicker.Symbol),
+//		zap.Int64("bin_ftx_diff", time.Duration(sb.BinTicker.ReceiveTime-sb.FtxTicker.ReceiveTime).Milliseconds()),
+//		zap.Duration("binance_max_delay", -p.cfg.Service.BinanceMaxDelay),
+//		zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)),
+//		zap.Duration("ftx_receive_vs_server", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)),
+//		zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
+//		zap.Any("clear_p", sb.ProfitSubAvg),
+//	)
+//	return lock
+//}
+//if sb.ID != sb.BinTicker.ReceiveTime && time.Duration(sb.StartTime-sb.LastBinTime) > p.cfg.Service.BinanceMaxStaleTime {
+//	p.log.Info("binance_stale",
+//		zap.String("symbol", sb.FtxTicker.Symbol),
+//		zap.Duration("last_bin_time_to_now", time.Duration(sb.StartTime-sb.LastBinTime)),
+//		zap.Duration("binance_max_stale_time", p.cfg.Service.BinanceMaxStaleTime),
+//		zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)))
+//	return lock
+//}

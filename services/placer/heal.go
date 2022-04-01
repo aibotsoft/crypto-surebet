@@ -17,7 +17,7 @@ const (
 )
 
 func (p *Placer) placeHeal(h *store.Heal) {
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 10; i++ {
 		resp, err := p.PlaceOrder(p.ctx, h.PlaceParams)
 		if err != nil {
 			p.log.Error("heal_place_error", zap.Error(err))
@@ -28,7 +28,8 @@ func (p *Placer) placeHeal(h *store.Heal) {
 			h.ErrorMsg = ftxapi.StringPointer(msg)
 		}
 		if resp != nil {
-			h.OrderID = resp.ID
+			h.Orders = append(h.Orders, resp)
+			//h.OrderID = resp.ID
 			break
 		}
 	}
@@ -88,6 +89,12 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 		p.placeHeal(&h)
 		return
 	}
+
+	got, ok := p.surebetMap.Load(*order.ClientID)
+	if !ok {
+		p.log.Warn("not_found_surebet_in_map", zap.Any("order", order))
+		return
+	}
 	lock := p.Lock(symbolFromMarket(order.Market))
 	defer func() {
 		p.surebetMap.Delete(*order.ClientID)
@@ -96,13 +103,10 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 			zap.Int64("elapsed", (time.Now().UnixNano()-id)/1000000))
 	}()
 	if order.FilledSize == 0 {
+		p.deleteSbCh <- order.ID
 		return
 	}
-	got, ok := p.surebetMap.Load(*order.ClientID)
-	if !ok {
-		p.log.Warn("not_found_surebet_in_map", zap.Any("order", order))
-		return
-	}
+
 	sb := got.(*store.Surebet)
 	h := store.Heal{
 		ID:           sb.ID,

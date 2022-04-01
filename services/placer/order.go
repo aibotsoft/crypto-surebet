@@ -17,7 +17,7 @@ func DecimalToFloat64(d decimal.Decimal) float64 {
 	f, _ := d.Float64()
 	return f
 }
-func (p *Placer) PlaceOrder(ctx context.Context, param store.PlaceParamsEmb) (*ftxapi.Order, error) {
+func (p *Placer) PlaceOrder(ctx context.Context, param store.PlaceParamsEmb) (*store.Order, error) {
 	//start := time.Now()
 	data := ftxapi.PlaceOrderParams{
 		Market:   param.Market,
@@ -34,13 +34,18 @@ func (p *Placer) PlaceOrder(ctx context.Context, param store.PlaceParamsEmb) (*f
 	if err != nil {
 		return nil, err
 	}
+	var o store.Order
+	err = copier.Copy(&o, resp)
+	if err != nil {
+		return nil, err
+	}
 	//p.log.Info("place_done",
 	//	zap.Duration("elapsed", time.Since(start)),
 	//	zap.Any("params", data),
 	//	//zap.Any("resp", resp),
 	//)
 	//fmt.Println(resp)
-	return resp, nil
+	return &o, nil
 
 }
 func (p *Placer) processOrder(order *ftxapi.WsOrdersEvent) {
@@ -142,9 +147,6 @@ func (p *Placer) processFills(fills *ftxapi.WsFillsEvent) {
 		p.log.Warn("copy_fills_error", zap.Error(err))
 		return
 	}
-	err = p.store.SaveFills(&data)
-	if err != nil {
-		p.log.Warn("save_fills_error", zap.Error(err))
-		return
-	}
+	p.saveFillsCh <- &data
+
 }

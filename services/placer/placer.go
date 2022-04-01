@@ -34,19 +34,17 @@ type Placer struct {
 	client      *ftxapi.Client
 	accountInfo store.Account
 
-	marketMap   map[string]*store.MarketEmb
-	marketLock  sync.Mutex
-	balanceMap  map[string]*store.BalanceEmb
-	balanceLock sync.Mutex
-
-	symbolMap sync.Map
-	//symbolMap      map[string]chan int64
-	//symbolLock     sync.Mutex
-
+	marketMap      map[string]*store.MarketEmb
+	marketLock     sync.Mutex
+	balanceMap     map[string]*store.BalanceEmb
+	balanceLock    sync.Mutex
+	symbolMap      sync.Map
 	ws             *ftxapi.WebsocketService
 	checkBalanceCh chan int64
 	placeConfig    PlaceConfig
 	saveSbCh       chan *store.Surebet
+	saveFillsCh    chan *store.Fills
+	deleteSbCh     chan int64
 	surebetMap     sync.Map
 	healMap        sync.Map
 	orderMap       sync.Map
@@ -82,8 +80,10 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 		marketMap:  make(map[string]*store.MarketEmb),
 		balanceMap: make(map[string]*store.BalanceEmb),
 		//symbolMap:      make(map[string]chan int64),
-		checkBalanceCh: make(chan int64, 20),
-		saveSbCh:       make(chan *store.Surebet, 100),
+		checkBalanceCh: make(chan int64, 200),
+		saveSbCh:       make(chan *store.Surebet, 200),
+		saveFillsCh:    make(chan *store.Fills, 200),
+		deleteSbCh:     make(chan int64, 200),
 		placeConfig: PlaceConfig{
 			MaxStake:          decimal.NewFromInt(cfg.Service.MaxStake),
 			TargetProfit:      decimal.NewFromFloat(cfg.Service.TargetProfit),
@@ -146,12 +146,9 @@ func (p *Placer) Run() error {
 	for {
 		select {
 		case sb := <-p.saveSbCh:
-			err = p.store.SaveSurebet(sb)
-			if err != nil {
-				p.log.Warn("save_sb_error", zap.Error(err))
-			}
+			p.store.SaveSurebet(sb)
 		case t := <-p.checkBalanceCh:
-			if time.Since(lastBalanceCheck) < time.Millisecond*50 {
+			if time.Since(lastBalanceCheck) < time.Millisecond*100 {
 				//p.log.Info("repeat_balance_check",
 				//	zap.Any("ch_time", t),
 				//	zap.Any("diff", time.Since(lastBalanceCheck)),
@@ -169,6 +166,12 @@ func (p *Placer) Run() error {
 				p.log.Info("get_balances_error", zap.Error(err), zap.Int64("checkBalanceTime", t))
 			}
 			lastBalanceCheck = time.Now()
+			p.log.Info("balance_tick", zap.Int("len", len(balanceTick)))
+
+		case orderID := <-p.deleteSbCh:
+			p.store.DeleteSurebetByOrderID(orderID)
+		case fills := <-p.saveFillsCh:
+			p.store.SaveFills(fills)
 		case <-balanceTick:
 			_ = p.GetBalances()
 			p.printLockStatus()
@@ -187,18 +190,12 @@ func (p *Placer) Run() error {
 func (p *Placer) printLockStatus() {
 	var lockSym []string
 	p.symbolMap.Range(func(key, value interface{}) bool {
-		sym := key.(string)
 		ch := value.(chan int64)
 		if len(ch) == 1 {
-			lockSym = append(lockSym, sym)
+			lockSym = append(lockSym, key.(string))
 		}
 		return true
 	})
-	//for sym, ch := range p.symbolMap {
-	//	if len(ch) == 1 {
-	//		lockSym = append(lockSym, sym)
-	//	}
-	//}
 	if len(lockSym) > 0 {
 		p.log.Info("active_locks", zap.Any("list", lockSym))
 	}
