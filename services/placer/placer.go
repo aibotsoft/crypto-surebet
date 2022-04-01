@@ -48,6 +48,7 @@ type Placer struct {
 	surebetMap     sync.Map
 	healMap        sync.Map
 	orderMap       sync.Map
+	saveHealCh     chan *store.Heal
 }
 type PlaceConfig struct {
 	MaxStake          decimal.Decimal
@@ -82,6 +83,7 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 		//symbolMap:      make(map[string]chan int64),
 		checkBalanceCh: make(chan int64, 200),
 		saveSbCh:       make(chan *store.Surebet, 200),
+		saveHealCh:     make(chan *store.Heal, 200),
 		saveFillsCh:    make(chan *store.Fills, 200),
 		deleteSbCh:     make(chan int64, 200),
 		placeConfig: PlaceConfig{
@@ -166,8 +168,10 @@ func (p *Placer) Run() error {
 				p.log.Info("get_balances_error", zap.Error(err), zap.Int64("checkBalanceTime", t))
 			}
 			lastBalanceCheck = time.Now()
-			p.log.Info("balance_tick", zap.Int("len", len(balanceTick)))
+			//p.log.Info("balance_tick", zap.Int("len", len(balanceTick)))
 
+		case h := <-p.saveHealCh:
+			p.store.SaveHeal(h)
 		case orderID := <-p.deleteSbCh:
 			p.store.DeleteSurebetByOrderID(orderID)
 		case fills := <-p.saveFillsCh:

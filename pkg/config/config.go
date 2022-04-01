@@ -8,17 +8,17 @@ import (
 
 type Config struct {
 	Service struct {
-		Name                string        `json:"name"`
-		TargetProfit        float64       `json:"target_profit"`
-		TargetAmount        int64         `json:"target_amount"`
-		BinFtxVolumeRatio   int64         `json:"bin_ftx_volume_ratio"`
-		ProfitDiffRatio     int64         `json:"profit_diff_ratio"`
-		AvgPriceDiffRatio   int64         `json:"avg_price_diff_ratio"`
-		ProfitIncRatio      int64         `json:"profit_inc_ratio"`
-		MaxStake            int64         `json:"max_stake"`
-		ReferralRate        float64       `json:"referral_rate"`
-		BinanceMaxDelay     time.Duration `json:"binance_max_delay"`
-		BinanceMaxStaleTime time.Duration `json:"binance_max_stale_time"`
+		Name              string  `json:"name"`
+		TargetProfit      float64 `json:"target_profit"`
+		TargetAmount      int64   `json:"target_amount"`
+		BinFtxVolumeRatio int64   `json:"bin_ftx_volume_ratio"`
+		ProfitDiffRatio   int64   `json:"profit_diff_ratio"`
+		AvgPriceDiffRatio int64   `json:"avg_price_diff_ratio"`
+		ProfitIncRatio    int64   `json:"profit_inc_ratio"`
+		MaxStake          int64   `json:"max_stake"`
+		ReferralRate      float64 `json:"referral_rate"`
+		//BinanceMaxDelay     time.Duration `json:"binance_max_delay"`
+		//BinanceMaxStaleTime time.Duration `json:"binance_max_stale_time"`
 		SendReceiveMaxDelay time.Duration `json:"send_receive_max_delay"`
 		MaxLockTime         time.Duration `json:"max_lock_time"`
 		DemoMode            bool          `json:"demo_mode" default:"false"`

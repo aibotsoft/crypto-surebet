@@ -141,14 +141,20 @@ func (s *Store) SaveFills(data *Fills) {
 	}
 }
 
-func (s *Store) SaveHeal(data *Heal) error {
-	return s.db.Clauses(clause.OnConflict{UpdateAll: true}).Create(data).Error
+func (s *Store) SaveHeal(data *Heal) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	err := s.db.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(data).Error
+	if err != nil {
+		s.log.Error("save_heal_error", zap.Error(err))
+	}
 }
 
 func (s *Store) DeleteSurebetByOrderID(orderID int64) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := s.db.WithContext(ctx).Debug().Where("order_id=?", orderID).Delete(&Surebet{}).Error
+	err := s.db.WithContext(ctx).Where("order_id=?", orderID).Delete(&Surebet{}).Error
 	if err != nil {
 		s.log.Error("delete_surebet_error", zap.Error(err), zap.Int64("order_id", orderID))
 	}

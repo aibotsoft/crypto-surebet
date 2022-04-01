@@ -46,10 +46,8 @@ func (p *Placer) placeHeal(h *store.Heal) {
 		zap.Any("c_id", h.PlaceParams.ClientID),
 		zap.Int64("el", (h.Done-h.ID)/1000000),
 	)
-	err := p.store.SaveHeal(h)
-	if err != nil {
-		p.log.Error("save_heal_error", zap.Error(err))
-	}
+	p.saveHealCh <- h
+
 	p.log.Debug("done_heal", zap.Duration("elapsed", time.Duration(h.Done-h.Start)))
 }
 
@@ -141,7 +139,7 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 		h.ErrorMsg = ftxapi.StringPointer(msg)
 		h.Done = time.Now().UnixNano()
 		h.ProfitPart = decimal.Zero
-		_ = p.store.SaveHeal(&h)
+		p.saveHealCh <- &h
 		return
 	}
 	p.healMap.Store(h.PlaceParams.ClientID, h)
