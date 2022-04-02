@@ -48,6 +48,7 @@ func (p *Placer) PlaceOrder(ctx context.Context, param store.PlaceParamsEmb) (*s
 	return &o, nil
 
 }
+
 func (p *Placer) processOrder(order *ftxapi.WsOrdersEvent) {
 	if order.Data.ClientID == nil {
 		p.log.Info("order_client_id_null", zap.Any("data", order.Data))
@@ -59,6 +60,11 @@ func (p *Placer) processOrder(order *ftxapi.WsOrdersEvent) {
 		p.log.Error("copy_order_error", zap.Error(err))
 		return
 	}
+	clientID, err := unmarshalClientID(*o.ClientID)
+	if err != nil {
+		return
+	}
+
 	if o.PostOnly == true {
 		sumSize := o.RemainingSize + o.FilledSize
 		if o.Size > sumSize && sumSize > 0 {
@@ -66,16 +72,18 @@ func (p *Placer) processOrder(order *ftxapi.WsOrdersEvent) {
 		}
 	}
 	if o.Status == store.OrderStatusClosed {
-		go p.heal(order.Data)
-		p.orderMap.Delete(o.ID)
+		p.openOrderMap.Delete(o.ID)
 		o.ClosedAt = ftxapi.Int64Pointer(time.Now().UnixNano())
+		if clientID.Side == BET {
+			go p.heal(o, clientID)
+		} else {
+			go p.reHeal(o, clientID)
+		}
+
 	} else {
-		p.orderMap.Store(o.ID, o)
+		p.openOrderMap.Store(o.ID, o)
 	}
-	err = p.store.SaveOrder(&o)
-	if err != nil {
-		p.log.Error("save_order_error", zap.Error(err))
-	}
+	p.store.SaveOrder(&o)
 }
 func (p *Placer) GetOpenOrders() error {
 	ctx, cancel := context.WithTimeout(p.ctx, 5*time.Second)
@@ -90,20 +98,19 @@ func (p *Placer) GetOpenOrders() error {
 		return err
 	}
 	for _, order := range data {
-		p.orderMap.Store(order.ID, order)
-		//p.log.Info("", zap.Any("order", order))
+		p.openOrderMap.Store(order.ID, order)
 	}
 	return err
 }
 func (p *Placer) GetOpenBuySell(coin string) (decimal.Decimal, decimal.Decimal) {
 	var buy, sell decimal.Decimal
-	p.orderMap.Range(func(key, value interface{}) bool {
+	p.openOrderMap.Range(func(key, value interface{}) bool {
 		order := value.(store.Order)
 		if strings.Index(order.Market, coin) == -1 {
 			return true
 		}
 		if order.Status == store.OrderStatusClosed {
-			p.orderMap.Delete(key)
+			p.openOrderMap.Delete(key)
 			return true
 		}
 		if order.Side == store.SideBuy {

@@ -6,17 +6,12 @@ import (
 	"github.com/aibotsoft/ftx-api"
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
-	"strconv"
-	"strings"
 	"time"
 )
 
-const (
-	BET  = "b"
-	HEAL = "h"
-)
-
 func (p *Placer) placeHeal(h *store.Heal) {
+	p.healMap.Store(h.ID, h)
+
 	for i := 0; i < 10; i++ {
 		resp, err := p.PlaceOrder(p.ctx, h.PlaceParams)
 		if err != nil {
@@ -38,6 +33,7 @@ func (p *Placer) placeHeal(h *store.Heal) {
 		zap.Any("id", h.ID),
 		zap.Any("m", h.PlaceParams.Market),
 		zap.Any("s", h.PlaceParams.Side),
+		zap.Any("heal_count", len(h.Orders)),
 		zap.Any("pr", h.PlaceParams.Price),
 		zap.Any("sz", h.PlaceParams.Size),
 		zap.Any("v", h.PlaceParams.Size.Mul(h.PlaceParams.Price).Floor()),
@@ -47,66 +43,56 @@ func (p *Placer) placeHeal(h *store.Heal) {
 		zap.Int64("el", (h.Done-h.ID)/1000000),
 	)
 	p.saveHealCh <- h
-
 	p.log.Debug("done_heal", zap.Duration("elapsed", time.Duration(h.Done-h.Start)))
 }
 
-func (p *Placer) heal(order ftxapi.WsOrders) {
-	if strings.Index(*order.ClientID, "h") > 0 {
-		if order.FilledSize != 0 {
-			return
-		}
-		p.log.Error("heal_order_zero", zap.Any("order", order))
-		got, ok := p.healMap.Load(*order.ClientID)
-		if !ok {
-			p.log.Warn("not_found_heal_in_map", zap.Any("order", order))
-			return
-		}
-		h := got.(store.Heal)
-		split := strings.Split(h.PlaceParams.ClientID, ":")
-		try, err := strconv.Atoi(split[2])
-		if err != nil {
-			p.log.Error("convert_try_error", zap.String("client_id", h.PlaceParams.ClientID))
-		}
-		next := try + 1
-		h.PlaceParams.ClientID = fmt.Sprintf("%d:%s:%d", h.ID, HEAL, next)
-		//TargetProfit*2 from original price
-		priceInc := h.PlaceParams.Price.Div(d100).Mul(p.placeConfig.TargetProfit.Mul(d2))
-		if h.PlaceParams.Side == store.SideSell {
-			h.PlaceParams.Price = h.PlaceParams.Price.Add(priceInc)
-		} else {
-			h.PlaceParams.Price = h.PlaceParams.Price.Sub(priceInc)
-		}
-		msg := fmt.Sprintf("heal_price_inc:%v", priceInc)
-		if h.ErrorMsg != nil {
-			msg = fmt.Sprintf("%s :: %s", msg, *h.ErrorMsg)
-		}
-		h.ErrorMsg = ftxapi.StringPointer(msg)
-
-		p.healMap.Store(h.PlaceParams.ClientID, h)
-		p.placeHeal(&h)
+func (p *Placer) reHeal(order store.Order, clientID ClientID) {
+	if order.FilledSize != 0 {
 		return
 	}
+	p.log.Error("heal_order_zero", zap.Any("order", order))
+	got, ok := p.healMap.Load(clientID.ID)
+	if !ok {
+		p.log.Warn("not_found_heal_in_map", zap.Any("order", order))
+		return
+	}
+	h := got.(*store.Heal)
+	clientID.Try = clientID.Try + 1
+	h.PlaceParams.ClientID = marshalClientID(clientID)
 
-	got, ok := p.surebetMap.Load(*order.ClientID)
+	//TargetProfit*2 from original price
+	priceInc := h.PlaceParams.Price.Div(d100).Mul(p.placeConfig.TargetProfit.Mul(d2))
+	if h.PlaceParams.Side == store.SideSell {
+		h.PlaceParams.Price = h.PlaceParams.Price.Add(priceInc)
+	} else {
+		h.PlaceParams.Price = h.PlaceParams.Price.Sub(priceInc)
+	}
+	msg := fmt.Sprintf("heal_price_inc:%v", priceInc)
+	if h.ErrorMsg != nil {
+		msg = fmt.Sprintf("%s :: %s", msg, *h.ErrorMsg)
+	}
+	h.ErrorMsg = ftxapi.StringPointer(msg)
+	p.placeHeal(h)
+}
+
+func (p *Placer) heal(order store.Order, clientID ClientID) {
+	got, ok := p.surebetMap.LoadAndDelete(clientID.ID)
 	if !ok {
 		p.log.Warn("not_found_surebet_in_map", zap.Any("order", order))
 		return
 	}
 	lock := p.Lock(symbolFromMarket(order.Market))
 	defer func() {
-		p.surebetMap.Delete(*order.ClientID)
+		//p.surebetMap.Delete(clientID.ID)
 		id := <-lock
-		p.log.Debug("unlock", zap.Int64("id", id), zap.String("m", order.Market),
-			zap.Int64("elapsed", (time.Now().UnixNano()-id)/1000000))
+		p.log.Debug("unlock", zap.Int64("id", id), zap.String("m", order.Market), zap.Int64("elapsed", (time.Now().UnixNano()-id)/1000000))
 	}()
 	if order.FilledSize == 0 {
 		p.deleteSbCh <- order.ID
 		return
 	}
-
 	sb := got.(*store.Surebet)
-	h := store.Heal{
+	h := &store.Heal{
 		ID:           sb.ID,
 		Start:        time.Now().UnixNano(),
 		FilledSize:   decimal.NewFromFloat(order.FilledSize),
@@ -116,7 +102,12 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 			Type:     store.OrderTypeLimit,
 			Ioc:      false,
 			PostOnly: true,
-			ClientID: fmt.Sprintf("%d:%s:0", sb.ID, HEAL),
+			//ClientID: fmt.Sprintf("%d:%s:0", sb.ID, HEAL),
+			ClientID: marshalClientID(ClientID{
+				ID:   sb.ID,
+				Side: HEAL,
+				Try:  0,
+			}),
 		},
 	}
 
@@ -139,13 +130,8 @@ func (p *Placer) heal(order ftxapi.WsOrders) {
 		h.ErrorMsg = ftxapi.StringPointer(msg)
 		h.Done = time.Now().UnixNano()
 		h.ProfitPart = decimal.Zero
-		p.saveHealCh <- &h
+		p.saveHealCh <- h
 		return
 	}
-	p.healMap.Store(h.PlaceParams.ClientID, h)
-	p.placeHeal(&h)
-}
-func symbolFromMarket(m string) string {
-	split := strings.Split(m, "/")
-	return split[0]
+	p.placeHeal(h)
 }

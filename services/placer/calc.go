@@ -3,7 +3,6 @@ package placer
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/aibotsoft/crypto-surebet/pkg/store"
 	ftxapi "github.com/aibotsoft/ftx-api"
 	"github.com/shopspring/decimal"
@@ -169,7 +168,13 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	sb.PlaceParams.Type = store.OrderTypeLimit
 	sb.PlaceParams.Ioc = true
 	sb.PlaceParams.PostOnly = false
-	sb.PlaceParams.ClientID = fmt.Sprintf("%d:%s", sb.ID, BET)
+	//sb.PlaceParams.ClientID = fmt.Sprintf("%d:%s", sb.ID, BET)
+
+	sb.PlaceParams.ClientID = marshalClientID(ClientID{
+		ID:   sb.ID,
+		Side: BET,
+	})
+
 	sb.BeginPlace = time.Now().UnixNano()
 
 	if p.cfg.Service.DemoMode {
@@ -177,6 +182,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 			//zap.Any("id", sb.ID),
 			zap.Any("m", sb.PlaceParams.Market),
 			zap.Any("s", sb.PlaceParams.Side),
+			zap.Any("clientID", sb.PlaceParams.ClientID),
 			zap.Any("price", sb.Price),
 			zap.Any("place_price", sb.PlaceParams.Price),
 			zap.Any("size", sb.PlaceParams.Size),
@@ -199,11 +205,12 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 			zap.Any("bin_spread", sb.BinSpread),
 		)
 		time.Sleep(time.Millisecond * 50)
+		//p.saveSbCh <- sb
 		//p.checkBalanceCh <- time.Now().UnixNano()
 		return lock
 	}
 
-	p.surebetMap.Store(sb.PlaceParams.ClientID, sb)
+	p.surebetMap.Store(sb.ID, sb)
 	order, err := p.PlaceOrder(p.ctx, sb.PlaceParams)
 	sb.Done = time.Now().UnixNano()
 	if err != nil {
@@ -219,9 +226,6 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	}
 	sb.OrderID = order.ID
 	p.saveSbCh <- sb
-	//var o store.Order
-	//_ = copier.Copy(&o, order)
-	//p.orderMap.Store(o.ID, o)
 
 	p.log.Info("bet",
 		zap.Any("id", sb.ID),

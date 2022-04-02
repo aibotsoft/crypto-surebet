@@ -118,8 +118,14 @@ func (s *Store) SaveOrders(apiOrderList []ftxapi.Order) error {
 	}).Create(data).Error
 }
 
-func (s *Store) SaveOrder(order *Order) error {
-	return s.db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&order).Error
+func (s *Store) SaveOrder(order *Order) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	err := s.db.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(&order).Error
+	if err != nil {
+		s.log.Error("save_order_error", zap.Error(err))
+	}
 }
 
 func (s *Store) SaveSurebet(sb *Surebet) {

@@ -47,8 +47,9 @@ type Placer struct {
 	deleteSbCh     chan int64
 	surebetMap     sync.Map
 	healMap        sync.Map
-	orderMap       sync.Map
-	saveHealCh     chan *store.Heal
+	openOrderMap   sync.Map
+	//healOrderMap   sync.Map
+	saveHealCh chan *store.Heal
 }
 type PlaceConfig struct {
 	MaxStake          decimal.Decimal
@@ -260,6 +261,6 @@ func (p *Placer) AccountInfo() error {
 		return err
 	}
 	p.accountInfo = data
-	p.log.Debug("AccountInfo_done", zap.Duration("elapsed", time.Since(start)), zap.Int("goroutine", runtime.NumGoroutine()))
+	p.log.Debug("account_info_done", zap.Duration("elapsed", time.Since(start)), zap.Int("goroutine", runtime.NumGoroutine()))
 	return nil
 }
