@@ -9,13 +9,15 @@ import (
 	"time"
 )
 
+const million = 1000000
+
 func (p *Placer) placeHeal(h *store.Heal) {
 	p.healMap.Store(h.ID, h)
 
 	for i := 0; i < 10; i++ {
 		resp, err := p.PlaceOrder(p.ctx, h.PlaceParams)
 		if err != nil {
-			p.log.Error("heal_place_error", zap.Error(err))
+			p.log.Error("heal_error", zap.Error(err))
 			msg := fmt.Sprintf("try:%d err:%s", i, err.Error())
 			if h.ErrorMsg != nil {
 				msg = fmt.Sprintf("%s :: %s", msg, *h.ErrorMsg)
@@ -24,48 +26,64 @@ func (p *Placer) placeHeal(h *store.Heal) {
 		}
 		if resp != nil {
 			h.Orders = append(h.Orders, resp)
-			//h.OrderID = resp.ID
 			break
 		}
 	}
 	h.Done = time.Now().UnixNano()
-	p.log.Info("heal",
-		zap.Any("id", h.ID),
-		zap.Any("m", h.PlaceParams.Market),
-		zap.Any("s", h.PlaceParams.Side),
-		zap.Any("heal_count", len(h.Orders)),
-		zap.Any("pr", h.PlaceParams.Price),
-		zap.Any("sz", h.PlaceParams.Size),
-		zap.Any("v", h.PlaceParams.Size.Mul(h.PlaceParams.Price).Floor()),
-		zap.Any("p_part", h.ProfitPart),
-		zap.Any("msg", h.ErrorMsg),
-		zap.Any("c_id", h.PlaceParams.ClientID),
-		zap.Int64("el", (h.Done-h.ID)/1000000),
-	)
 	p.saveHealCh <- h
-	p.log.Debug("done_heal", zap.Duration("elapsed", time.Duration(h.Done-h.Start)))
 }
 
 func (p *Placer) reHeal(order store.Order, clientID ClientID) {
-	if order.FilledSize != 0 {
-		return
-	}
-	p.log.Error("heal_order_zero", zap.Any("order", order))
 	got, ok := p.healMap.Load(clientID.ID)
 	if !ok {
 		p.log.Warn("not_found_heal_in_map", zap.Any("order", order))
 		return
 	}
 	h := got.(*store.Heal)
+	filledSizeSum := decimal.NewFromFloat(order.FilledSize)
+	for _, o := range h.Orders {
+		filledSizeSum = filledSizeSum.Add(decimal.NewFromFloat(o.FilledSize))
+	}
+	h.PlaceParams.Size = h.FilledSize.Sub(filledSizeSum).Div(h.MinSize).Floor().Mul(h.MinSize)
+	if h.PlaceParams.Size.LessThan(h.MinSize) {
+		p.healMap.Delete(clientID.ID)
+		p.log.Info("heal_filled",
+			zap.Int64("i", h.ID),
+			zap.String("m", h.PlaceParams.Market),
+			zap.String("s", string(h.PlaceParams.Side)),
+			zap.Float64("bf_size", h.FilledSize.InexactFloat64()),
+			zap.Float64("hf_size", filledSizeSum.InexactFloat64()),
+			zap.Float64("size", h.PlaceParams.Size.InexactFloat64()),
+			zap.Float64("min_size", h.MinSize.InexactFloat64()),
+			zap.Int("h_count", len(h.Orders)+1),
+			//zap.Any("order", order),
+			zap.Int64("el", (time.Now().UnixNano()-h.ID)/million),
+			zap.Int64("done_id_el", (h.Done-h.ID)/million),
+		)
+		return
+	}
+
 	clientID.Try = clientID.Try + 1
 	h.PlaceParams.ClientID = marshalClientID(clientID)
-
 	//TargetProfit*2 from original price
 	priceInc := h.PlaceParams.Price.Div(d100).Mul(p.placeConfig.TargetProfit.Mul(d2))
+
+	if priceInc.LessThan(h.PriceIncrement) {
+		p.log.Info("price_inc_too_low",
+			zap.Int64("i", h.ID),
+			zap.String("m", h.PlaceParams.Market),
+			zap.String("s", string(h.PlaceParams.Side)),
+			zap.Float64("calc_price_inc", priceInc.InexactFloat64()),
+			zap.Float64("market_price_inc", h.PriceIncrement.InexactFloat64()),
+			zap.Float64("price", h.PlaceParams.Price.InexactFloat64()),
+			zap.Float64("target_p", p.placeConfig.TargetProfit.InexactFloat64()),
+		)
+		priceInc = h.PriceIncrement
+	}
 	if h.PlaceParams.Side == store.SideSell {
-		h.PlaceParams.Price = h.PlaceParams.Price.Add(priceInc)
+		h.PlaceParams.Price = h.PlaceParams.Price.Add(priceInc).Div(h.PriceIncrement).Floor().Mul(h.PriceIncrement)
 	} else {
-		h.PlaceParams.Price = h.PlaceParams.Price.Sub(priceInc)
+		h.PlaceParams.Price = h.PlaceParams.Price.Sub(priceInc).Div(h.PriceIncrement).Floor().Mul(h.PriceIncrement)
 	}
 	msg := fmt.Sprintf("heal_price_inc:%v", priceInc)
 	if h.ErrorMsg != nil {
@@ -73,6 +91,18 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 	}
 	h.ErrorMsg = ftxapi.StringPointer(msg)
 	p.placeHeal(h)
+	p.log.Info("heal_add",
+		zap.Int64("i", h.ID),
+		zap.String("m", h.PlaceParams.Market),
+		zap.String("s", string(h.PlaceParams.Side)),
+		zap.Float64("bf_size", h.FilledSize.InexactFloat64()),
+		zap.Float64("hf_size", filledSizeSum.InexactFloat64()),
+		zap.Float64("size", h.PlaceParams.Size.InexactFloat64()),
+		zap.Float64("min_size", h.MinSize.InexactFloat64()),
+		zap.Int("h_count", len(h.Orders)+1),
+		zap.Int64("full_el", (h.Done-h.ID)/million),
+		//zap.Any("order", order),
+	)
 }
 
 func (p *Placer) heal(order store.Order, clientID ClientID) {
@@ -83,7 +113,6 @@ func (p *Placer) heal(order store.Order, clientID ClientID) {
 	}
 	lock := p.Lock(symbolFromMarket(order.Market))
 	defer func() {
-		//p.surebetMap.Delete(clientID.ID)
 		id := <-lock
 		p.log.Debug("unlock", zap.Int64("id", id), zap.String("m", order.Market), zap.Int64("elapsed", (time.Now().UnixNano()-id)/1000000))
 	}()
@@ -93,16 +122,17 @@ func (p *Placer) heal(order store.Order, clientID ClientID) {
 	}
 	sb := got.(*store.Surebet)
 	h := &store.Heal{
-		ID:           sb.ID,
-		Start:        time.Now().UnixNano(),
-		FilledSize:   decimal.NewFromFloat(order.FilledSize),
-		AvgFillPrice: decimal.NewFromFloat(order.AvgFillPrice),
+		ID:             sb.ID,
+		Start:          time.Now().UnixNano(),
+		FilledSize:     decimal.NewFromFloat(order.FilledSize),
+		AvgFillPrice:   decimal.NewFromFloat(order.AvgFillPrice),
+		MinSize:        sb.Market.MinProvideSize,
+		PriceIncrement: sb.Market.PriceIncrement,
 		PlaceParams: store.PlaceParamsEmb{
 			Market:   sb.PlaceParams.Market,
 			Type:     store.OrderTypeLimit,
 			Ioc:      false,
 			PostOnly: true,
-			//ClientID: fmt.Sprintf("%d:%s:0", sb.ID, HEAL),
 			ClientID: marshalClientID(ClientID{
 				ID:   sb.ID,
 				Side: HEAL,
@@ -124,7 +154,7 @@ func (p *Placer) heal(order store.Order, clientID ClientID) {
 		price := h.AvgFillPrice.Mul(h.FilledSize).Add(h.FeePart).Add(h.ProfitPart).Div(h.PlaceParams.Size)
 		h.PlaceParams.Price = price.Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
 	}
-	if h.PlaceParams.Size.LessThan(sb.Market.MinProvideSize) {
+	if h.PlaceParams.Size.LessThan(h.MinSize) {
 		p.log.Warn("size_too_small_to_heal", zap.Any("h", h))
 		msg := fmt.Sprintf("size:%v min_provide:%v", h.PlaceParams.Size, sb.Market.MinProvideSize)
 		h.ErrorMsg = ftxapi.StringPointer(msg)
@@ -134,4 +164,17 @@ func (p *Placer) heal(order store.Order, clientID ClientID) {
 		return
 	}
 	p.placeHeal(h)
+	p.log.Info("heal",
+		zap.Int64("i", h.ID),
+		zap.String("m", h.PlaceParams.Market),
+		zap.String("s", string(h.PlaceParams.Side)),
+		zap.Float64("pr", h.PlaceParams.Price.InexactFloat64()),
+		zap.Float64("sz", h.PlaceParams.Size.InexactFloat64()),
+		zap.Int64("v", h.PlaceParams.Size.Mul(h.PlaceParams.Price).IntPart()),
+		zap.Any("p_part", h.ProfitPart),
+		zap.Any("msg", h.ErrorMsg),
+		//zap.String("c_id", h.PlaceParams.ClientID),
+		zap.Int64("h_el", (h.Done-h.Start)/million),
+		zap.Int64("full_el", (h.Done-h.ID)/million),
+	)
 }

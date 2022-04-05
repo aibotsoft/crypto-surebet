@@ -273,11 +273,13 @@ type Heal struct {
 	Start     int64     `json:"start" gorm:"not null"`
 	Done      int64     `json:"done" gorm:"not null"`
 	//OrderID      int64           `json:"order_id" gorm:"index"`
-	PlaceParams  PlaceParamsEmb  `json:"place" gorm:"embedded;embeddedPrefix:place_"`
-	FilledSize   decimal.Decimal `json:"filled_size" gorm:"type:numeric not null"`
-	AvgFillPrice decimal.Decimal `json:"avg_fill_price" gorm:"type:numeric not null"`
-	FeePart      decimal.Decimal `json:"fee_part" gorm:"type:numeric not null"`
-	ProfitPart   decimal.Decimal `json:"profit_part" gorm:"type:numeric not null"`
-	ErrorMsg     *string         `json:"error_msg"`
-	Orders       []*Order        `json:"orders" gorm:"many2many:heal_orders;"`
+	PlaceParams    PlaceParamsEmb  `json:"place" gorm:"embedded;embeddedPrefix:place_"`
+	FilledSize     decimal.Decimal `json:"filled_size" gorm:"type:numeric not null"`
+	AvgFillPrice   decimal.Decimal `json:"avg_fill_price" gorm:"type:numeric not null"`
+	FeePart        decimal.Decimal `json:"fee_part" gorm:"type:numeric not null"`
+	ProfitPart     decimal.Decimal `json:"profit_part" gorm:"type:numeric not null"`
+	ErrorMsg       *string         `json:"error_msg"`
+	Orders         []*Order        `json:"orders" gorm:"many2many:heal_orders;"`
+	MinSize        decimal.Decimal `json:"min_size" gorm:"type:numeric"`
+	PriceIncrement decimal.Decimal `json:"price_increment" gorm:"type:numeric"`
 }

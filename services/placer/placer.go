@@ -175,6 +175,7 @@ func (p *Placer) Run() error {
 			p.store.SaveHeal(h)
 		case orderID := <-p.deleteSbCh:
 			p.store.DeleteSurebetByOrderID(orderID)
+			p.store.DeleteOrderByID(orderID)
 		case fills := <-p.saveFillsCh:
 			p.store.SaveFills(fills)
 		case <-balanceTick:

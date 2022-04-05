@@ -166,6 +166,15 @@ func (s *Store) DeleteSurebetByOrderID(orderID int64) {
 	}
 }
 
+func (s *Store) DeleteOrderByID(orderID int64) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := s.db.WithContext(ctx).Delete(&Order{}, orderID).Error
+	if err != nil {
+		s.log.Error("delete_order_error", zap.Error(err), zap.Int64("order_id", orderID))
+	}
+}
+
 //func (s *Store) GetWallet(symbol string) (base *Wallet, quote *Wallet) {
 //	baseStr := strings.Replace(symbol, "USDT", "", 1)
 //	gotBase, _ := s.wallet.LoadOrStore(baseStr, &Wallet{Coin: baseStr})
