@@ -298,10 +298,10 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 		zap.Int64("order_id", order.ID),
 		zap.Float64("price", order.Price),
 	)
-	//ctx, cancel := context.WithTimeout(p.ctx, 5*time.Second)
-	//defer cancel()
-	//err = p.client.NewCancelOrderService().OrderID(order.ID).Do(ctx)
-	//if err != nil {
-	//	p.log.Error("cancel_order_error", zap.Error(err))
-	//}
+	ctx, cancel := context.WithTimeout(p.ctx, 5*time.Second)
+	defer cancel()
+	err = p.client.NewCancelOrderService().OrderID(order.ID).Do(ctx)
+	if err != nil {
+		p.log.Error("cancel_order_error", zap.Error(err))
+	}
 }
