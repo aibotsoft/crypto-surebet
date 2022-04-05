@@ -21,6 +21,7 @@ const usdt = "USDT"
 var d100 = decimal.RequireFromString("100")
 var d2 = decimal.RequireFromString("2")
 var d10 = decimal.RequireFromString("10")
+var reHealPeriod = time.Minute * 10
 
 //var placeCounter, fillsCounter atomic.Int64
 
@@ -277,7 +278,7 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 	if order.ClientID == nil {
 		return
 	}
-	if time.Since(order.CreatedAt) < time.Minute {
+	if time.Since(order.CreatedAt) < reHealPeriod {
 		return
 	}
 	clientID, err := unmarshalClientID(*order.ClientID)

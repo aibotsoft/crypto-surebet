@@ -45,6 +45,9 @@ func (p *Placer) findHeal(id int64) *store.Heal {
 	p.store.FindHealOrders(heal)
 	return heal
 }
+
+var minusOneDec = decimal.NewFromFloat(-1)
+
 func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 	h := p.findHeal(clientID.ID)
 	if h == nil {
@@ -57,13 +60,15 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 			break
 		}
 	}
-	if time.Since(order.CreatedAt) < time.Minute {
+	var reverseInc bool
+	if time.Since(order.CreatedAt) > reHealPeriod {
 		p.log.Info("found_heal",
 			zap.Duration("since", time.Since(order.CreatedAt)),
 			zap.Int("order_count", len(h.Orders)),
 			zap.Any("order_id", order.ID),
 			zap.Any("orders", h.Orders),
 		)
+		reverseInc = true
 	}
 	//filledSizeSum := decimal.NewFromFloat(order.FilledSize)
 	var filledSizeSum decimal.Decimal
@@ -79,7 +84,7 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 			zap.String("s", string(h.PlaceParams.Side)),
 			zap.Float64("bf_size", h.FilledSize.InexactFloat64()),
 			zap.Float64("hf_size", filledSizeSum.InexactFloat64()),
-			zap.Float64("size", h.PlaceParams.Size.InexactFloat64()),
+			//zap.Float64("size", h.PlaceParams.Size.InexactFloat64()),
 			zap.Float64("min_size", h.MinSize.InexactFloat64()),
 			zap.Int("h_count", len(h.Orders)),
 			//zap.Any("order", order),
@@ -107,10 +112,16 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 		priceInc = h.PriceIncrement
 	}
 	if h.PlaceParams.Side == store.SideSell {
-		h.PlaceParams.Price = h.PlaceParams.Price.Add(priceInc).Div(h.PriceIncrement).Floor().Mul(h.PriceIncrement)
+		if reverseInc {
+			priceInc = priceInc.Mul(minusOneDec)
+		}
 	} else {
-		h.PlaceParams.Price = h.PlaceParams.Price.Sub(priceInc).Div(h.PriceIncrement).Floor().Mul(h.PriceIncrement)
+		if !reverseInc {
+			priceInc = priceInc.Mul(minusOneDec)
+		}
 	}
+	h.PlaceParams.Price = h.PlaceParams.Price.Add(priceInc).Div(h.PriceIncrement).Floor().Mul(h.PriceIncrement)
+
 	msg := fmt.Sprintf("heal_price_inc:%v", priceInc)
 	if h.ErrorMsg != nil {
 		msg = fmt.Sprintf("%s :: %s", msg, *h.ErrorMsg)
@@ -125,6 +136,8 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 		zap.Float64("hf_size", filledSizeSum.InexactFloat64()),
 		zap.Float64("size", h.PlaceParams.Size.InexactFloat64()),
 		zap.Float64("min_size", h.MinSize.InexactFloat64()),
+		zap.Bool("is_reverse", reverseInc),
+		zap.Float64("price_inc", priceInc.InexactFloat64()),
 		zap.Int("h_count", len(h.Orders)),
 		zap.Int64("full_el", (h.Done-h.ID)/million),
 		zap.Duration("since_created", time.Since(order.CreatedAt)),
