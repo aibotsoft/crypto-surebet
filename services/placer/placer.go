@@ -274,21 +274,24 @@ func (p *Placer) AccountInfo() error {
 }
 
 func (p *Placer) processOpenOrder(order *store.Order) {
-	if order.ClientID != nil && time.Since(order.CreatedAt) > time.Minute {
-		clientID, err := unmarshalClientID(*order.ClientID)
-		if err != nil {
-			//p.log.Info("sdfasdf", zap.Any("", order.ClientID))
-			return
-		}
-		heal := p.findHeal(clientID.ID)
-		if heal != nil {
-			p.log.Info("",
-				zap.Duration("since", time.Since(order.CreatedAt)),
-				zap.Any("clientID", clientID),
-				zap.Any("", order),
-			)
-			return
-		}
-		p.store.FindOrders(heal)
+	if order.ClientID == nil {
+		return
 	}
+	if time.Since(order.CreatedAt) < time.Minute {
+		return
+	}
+	clientID, err := unmarshalClientID(*order.ClientID)
+	if err != nil {
+		return
+	}
+	heal := p.findHeal(clientID.ID)
+	if heal == nil {
+		return
+	}
+	p.store.FindOrders(heal)
+	p.log.Info("found_heal",
+		zap.Duration("since", time.Since(order.CreatedAt)),
+		zap.Any("clientID", clientID),
+		zap.Any("heal", heal),
+	)
 }
