@@ -185,7 +185,7 @@ func (s *Store) SelectHealByID(id int64) (*Heal, error) {
 
 func (s *Store) FindHealOrders(heal *Heal) {
 	var orders []*Order
-	err := s.db.Debug().Model(&heal).Association("Orders").Find(&orders)
+	err := s.db.Model(&heal).Association("Orders").Find(&orders)
 	if err != nil {
 		return
 	}

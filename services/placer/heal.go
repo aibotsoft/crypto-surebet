@@ -38,13 +38,11 @@ func (p *Placer) findHeal(id int64) *store.Heal {
 	if ok {
 		return got.(*store.Heal)
 	}
-	//return nil
 	heal, err := p.store.SelectHealByID(id)
 	if err != nil {
 		return nil
 	}
 	p.store.FindHealOrders(heal)
-
 	return heal
 }
 func (p *Placer) reHeal(order store.Order, clientID ClientID) {
@@ -53,7 +51,22 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 		p.log.Error("not_found_heal", zap.Any("id", clientID.ID))
 		return
 	}
-	filledSizeSum := decimal.NewFromFloat(order.FilledSize)
+	for i := 0; i < len(h.Orders); i++ {
+		if h.Orders[i].ID == order.ID {
+			h.Orders[i] = &order
+			break
+		}
+	}
+	if time.Since(order.CreatedAt) < time.Minute {
+		p.log.Info("found_heal",
+			zap.Duration("since", time.Since(order.CreatedAt)),
+			zap.Int("order_count", len(h.Orders)),
+			zap.Any("order_id", order.ID),
+			zap.Any("orders", h.Orders),
+		)
+	}
+	//filledSizeSum := decimal.NewFromFloat(order.FilledSize)
+	var filledSizeSum decimal.Decimal
 	for _, o := range h.Orders {
 		filledSizeSum = filledSizeSum.Add(decimal.NewFromFloat(o.FilledSize))
 	}
@@ -68,7 +81,7 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 			zap.Float64("hf_size", filledSizeSum.InexactFloat64()),
 			zap.Float64("size", h.PlaceParams.Size.InexactFloat64()),
 			zap.Float64("min_size", h.MinSize.InexactFloat64()),
-			zap.Int("h_count", len(h.Orders)+1),
+			zap.Int("h_count", len(h.Orders)),
 			//zap.Any("order", order),
 			zap.Int64("el", (time.Now().UnixNano()-h.ID)/million),
 			zap.Int64("done_id_el", (h.Done-h.ID)/million),
@@ -112,7 +125,7 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 		zap.Float64("hf_size", filledSizeSum.InexactFloat64()),
 		zap.Float64("size", h.PlaceParams.Size.InexactFloat64()),
 		zap.Float64("min_size", h.MinSize.InexactFloat64()),
-		zap.Int("h_count", len(h.Orders)+1),
+		zap.Int("h_count", len(h.Orders)),
 		zap.Int64("full_el", (h.Done-h.ID)/million),
 		zap.Duration("since_created", time.Since(order.CreatedAt)),
 		//zap.Any("order", order),
