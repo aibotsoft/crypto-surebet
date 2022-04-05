@@ -99,6 +99,10 @@ func (p *Placer) GetOpenOrders() error {
 	}
 	for _, order := range data {
 		p.openOrderMap.Store(order.ID, order)
+		//p.log.Info("",
+		//	zap.Duration("since", time.Since(order.CreatedAt)),
+		//	zap.Any("", order),
+		//)
 	}
 	return err
 }

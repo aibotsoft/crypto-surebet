@@ -175,6 +175,14 @@ func (s *Store) DeleteOrderByID(orderID int64) {
 	}
 }
 
+func (s *Store) SelectHealByID(id int64) (*Heal, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var heal Heal
+	err := s.db.WithContext(ctx).First(&heal, id).Error
+	return &heal, err
+}
+
 //func (s *Store) GetWallet(symbol string) (base *Wallet, quote *Wallet) {
 //	baseStr := strings.Replace(symbol, "USDT", "", 1)
 //	gotBase, _ := s.wallet.LoadOrStore(baseStr, &Wallet{Coin: baseStr})

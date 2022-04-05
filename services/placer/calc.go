@@ -42,6 +42,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	sb.MaxStake = p.placeConfig.MaxStake
 	sb.TargetProfit = p.placeConfig.TargetProfit
 	sb.TargetAmount = p.placeConfig.TargetAmount
+	sb.MinVolume = p.placeConfig.MinVolume
 
 	sb.RealFee = p.accountInfo.TakerFee.Sub(p.accountInfo.TakerFee.Mul(p.placeConfig.ReferralRate)).Mul(d100)
 	sb.BaseOpenBuy, sb.BaseOpenSell = p.GetOpenBuySell(sb.Market.BaseCurrency)
@@ -111,8 +112,8 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	}
 	if time.Duration(sb.StartTime-sb.ID) > p.cfg.Service.SendReceiveMaxDelay {
 		p.log.Info("lock_time_too_high",
-			zap.Int64("id", sb.ID),
-			zap.String("symbol", sb.FtxTicker.Symbol),
+			zap.Int64("i", sb.ID),
+			zap.String("s", sb.FtxTicker.Symbol),
 			zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
 			zap.Duration("send_receive_max_delay", p.cfg.Service.SendReceiveMaxDelay),
 		)
@@ -144,11 +145,12 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 			sb.BinTicker.BidQty.Div(p.placeConfig.BinFtxVolumeRatio),
 		)
 	}
-	if size.LessThan(sb.Market.MinProvideSize) {
-		p.log.Info("stake_too_low",
-			zap.String("s", sb.FtxTicker.Symbol),
-			zap.Any("sd", sb.PlaceParams.Side),
-			zap.Any("sz", size),
+	sb.PlaceParams.Size = size.Div(sb.Market.MinProvideSize).Floor().Mul(sb.Market.MinProvideSize)
+	if sb.PlaceParams.Size.LessThan(sb.Market.MinProvideSize) {
+		p.log.Info("stake_low",
+			zap.String("m", sb.FtxTicker.Symbol),
+			zap.String("s", string(sb.PlaceParams.Side)),
+			zap.Float64("sz", sb.PlaceParams.Size.InexactFloat64()),
 			zap.Any("min_size", sb.Market.MinProvideSize),
 			zap.Any("b_free", sb.BaseBalance.Free),
 			zap.Int64("q_free", sb.QuoteBalance.Free.IntPart()),
@@ -160,21 +162,35 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		)
 		return lock
 	}
+
+	sb.Volume = sb.PlaceParams.Size.Mul(sb.PlaceParams.Price).Floor()
+	if sb.Volume.LessThan(sb.MinVolume) {
+		p.log.Info("vol_low",
+			zap.String("m", sb.FtxTicker.Symbol),
+			zap.String("s", string(sb.PlaceParams.Side)),
+			zap.Float64("pr", sb.PlaceParams.Price.InexactFloat64()),
+			zap.Float64("sz", sb.PlaceParams.Size.InexactFloat64()),
+			zap.Int64("v", sb.Volume.IntPart()),
+			zap.Int64("min_v", sb.MinVolume.IntPart()),
+			zap.Float64("min_size", sb.Market.MinProvideSize.InexactFloat64()),
+			zap.Float64("b_free", sb.BaseBalance.Free.InexactFloat64()),
+			zap.Int64("q_free", sb.QuoteBalance.Free.IntPart()),
+			zap.Int64("vol_by_bin", sb.BinVolume.Div(p.placeConfig.BinFtxVolumeRatio).IntPart()),
+			//zap.Any("clear_p", sb.ProfitSubAvg),
+			//zap.Any("req_p", sb.RequiredProfit),
+			//zap.Any("avg_price_diff", sb.AvgPriceDiff),
+			//zap.Any("a_coef", sb.AmountCoef),
+		)
+		return lock
+	}
+
 	sb.MakerFee = p.accountInfo.MakerFee
 	sb.TakerFee = p.accountInfo.TakerFee
-	sb.PlaceParams.Size = size.Div(sb.Market.MinProvideSize).Floor().Mul(sb.Market.MinProvideSize)
-	sb.Volume = sb.PlaceParams.Size.Mul(sb.PlaceParams.Price).Round(5)
 	sb.PlaceParams.Market = sb.FtxTicker.Symbol
 	sb.PlaceParams.Type = store.OrderTypeLimit
 	sb.PlaceParams.Ioc = true
 	sb.PlaceParams.PostOnly = false
-	//sb.PlaceParams.ClientID = fmt.Sprintf("%d:%s", sb.ID, BET)
-
-	sb.PlaceParams.ClientID = marshalClientID(ClientID{
-		ID:   sb.ID,
-		Side: BET,
-	})
-
+	sb.PlaceParams.ClientID = marshalClientID(ClientID{ID: sb.ID, Side: BET})
 	sb.BeginPlace = time.Now().UnixNano()
 
 	if p.cfg.Service.DemoMode {
@@ -182,12 +198,12 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 			//zap.Any("id", sb.ID),
 			zap.Any("m", sb.PlaceParams.Market),
 			zap.Any("s", sb.PlaceParams.Side),
-			zap.Any("clientID", sb.PlaceParams.ClientID),
-			zap.Any("price", sb.Price),
-			zap.Any("place_price", sb.PlaceParams.Price),
-			zap.Any("size", sb.PlaceParams.Size),
+			//zap.Any("clientID", sb.PlaceParams.ClientID),
+			zap.Any("pr", sb.Price),
+			zap.Any("place_p", sb.PlaceParams.Price),
+			zap.Any("sz", sb.PlaceParams.Size),
 			//zap.Any("profit_inc", sb.ProfitInc),
-			zap.Any("amount_coef", sb.AmountCoef),
+			zap.Any("a_coef", sb.AmountCoef),
 			//zap.Any("target_amount", sb.TargetAmount),
 			//zap.Any("target_p", sb.TargetProfit),
 			zap.Any("req_p", sb.RequiredProfit),
@@ -228,7 +244,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	p.saveSbCh <- sb
 
 	p.log.Info("bet",
-		zap.Any("id", sb.ID),
+		zap.Any("i", sb.ID),
 		zap.Any("m", sb.PlaceParams.Market),
 		zap.Any("s", sb.PlaceParams.Side),
 		zap.Any("pr", sb.PlaceParams.Price),
@@ -249,7 +265,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 
 		//zap.Any("real_fee", sb.RealFee),
 		//zap.Any("p_price_diff", sb.ProfitPriceDiff),
-		zap.Any("total", sb.BaseTotal),
+		zap.Any("base_total", sb.BaseTotal),
 		zap.Any("o_buy", sb.BaseOpenBuy),
 		zap.Any("o_sell", sb.BaseOpenSell),
 		zap.Any("ftx_sp", sb.FtxSpread),

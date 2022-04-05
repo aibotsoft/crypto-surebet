@@ -33,13 +33,24 @@ func (p *Placer) placeHeal(h *store.Heal) {
 	p.saveHealCh <- h
 }
 
+func (p *Placer) findHeal(id int64) *store.Heal {
+	got, ok := p.healMap.Load(id)
+	if ok {
+		return got.(*store.Heal)
+	}
+	return nil
+	//heal, err := p.store.SelectHealByID(id)
+	//if err != nil {
+	//	return nil
+	//}
+	//return heal
+}
 func (p *Placer) reHeal(order store.Order, clientID ClientID) {
-	got, ok := p.healMap.Load(clientID.ID)
-	if !ok {
-		p.log.Warn("not_found_heal_in_map", zap.Any("order", order))
+	h := p.findHeal(clientID.ID)
+	if h == nil {
+		p.log.Error("not_found_heal", zap.Any("id", clientID.ID))
 		return
 	}
-	h := got.(*store.Heal)
 	filledSizeSum := decimal.NewFromFloat(order.FilledSize)
 	for _, o := range h.Orders {
 		filledSizeSum = filledSizeSum.Add(decimal.NewFromFloat(o.FilledSize))
@@ -59,6 +70,7 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 			//zap.Any("order", order),
 			zap.Int64("el", (time.Now().UnixNano()-h.ID)/million),
 			zap.Int64("done_id_el", (h.Done-h.ID)/million),
+			zap.Duration("since_created", time.Since(order.CreatedAt)),
 		)
 		return
 	}
@@ -67,7 +79,6 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 	h.PlaceParams.ClientID = marshalClientID(clientID)
 	//TargetProfit*2 from original price
 	priceInc := h.PlaceParams.Price.Div(d100).Mul(p.placeConfig.TargetProfit.Mul(d2))
-
 	if priceInc.LessThan(h.PriceIncrement) {
 		p.log.Info("price_inc_too_low",
 			zap.Int64("i", h.ID),
@@ -101,6 +112,7 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 		zap.Float64("min_size", h.MinSize.InexactFloat64()),
 		zap.Int("h_count", len(h.Orders)+1),
 		zap.Int64("full_el", (h.Done-h.ID)/million),
+		zap.Duration("since_created", time.Since(order.CreatedAt)),
 		//zap.Any("order", order),
 	)
 }
@@ -147,13 +159,13 @@ func (p *Placer) heal(order store.Order, clientID ClientID) {
 
 	if sb.PlaceParams.Side == store.SideSell {
 		h.PlaceParams.Side = store.SideBuy
-		price := h.AvgFillPrice.Mul(h.FilledSize).Sub(h.FeePart).Sub(h.ProfitPart).Div(h.PlaceParams.Size)
-		h.PlaceParams.Price = price.Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
+		h.PlaceParams.Price = h.AvgFillPrice.Mul(h.FilledSize).Sub(h.FeePart).Sub(h.ProfitPart).Div(h.PlaceParams.Size)
 	} else {
 		h.PlaceParams.Side = store.SideSell
-		price := h.AvgFillPrice.Mul(h.FilledSize).Add(h.FeePart).Add(h.ProfitPart).Div(h.PlaceParams.Size)
-		h.PlaceParams.Price = price.Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
+		h.PlaceParams.Price = h.AvgFillPrice.Mul(h.FilledSize).Add(h.FeePart).Add(h.ProfitPart).Div(h.PlaceParams.Size)
 	}
+	h.PlaceParams.Price = h.PlaceParams.Price.Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
+
 	if h.PlaceParams.Size.LessThan(h.MinSize) {
 		p.log.Warn("size_too_small_to_heal", zap.Any("h", h))
 		msg := fmt.Sprintf("size:%v min_provide:%v", h.PlaceParams.Size, sb.Market.MinProvideSize)

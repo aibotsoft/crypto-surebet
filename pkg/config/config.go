@@ -16,6 +16,7 @@ type Config struct {
 		AvgPriceDiffRatio int64   `json:"avg_price_diff_ratio"`
 		ProfitIncRatio    int64   `json:"profit_inc_ratio"`
 		MaxStake          int64   `json:"max_stake"`
+		MinVolume         int64   `json:"min_volume"`
 		ReferralRate      float64 `json:"referral_rate"`
 		//BinanceMaxDelay     time.Duration `json:"binance_max_delay"`
 		//BinanceMaxStaleTime time.Duration `json:"binance_max_stale_time"`

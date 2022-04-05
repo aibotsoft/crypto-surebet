@@ -60,6 +60,7 @@ type PlaceConfig struct {
 	ProfitDiffRatio   decimal.Decimal
 	AvgPriceDiffRatio decimal.Decimal
 	ProfitIncRatio    decimal.Decimal
+	MinVolume         decimal.Decimal
 }
 
 func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *store.Store) (*Placer, error) {
@@ -96,6 +97,7 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 			ProfitDiffRatio:   decimal.NewFromInt(cfg.Service.ProfitDiffRatio),
 			AvgPriceDiffRatio: decimal.NewFromInt(cfg.Service.AvgPriceDiffRatio),
 			ProfitIncRatio:    decimal.NewFromInt(cfg.Service.ProfitIncRatio),
+			MinVolume:         decimal.NewFromInt(cfg.Service.MinVolume),
 		},
 	}, nil
 }
