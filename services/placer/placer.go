@@ -285,14 +285,23 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 	if err != nil {
 		return
 	}
-	heal := p.findHeal(clientID.ID)
+	heal := p.findHeal(clientID.ID, false)
 	if heal == nil {
 		return
 	}
-	//p.log.Info("found_heal",
-	//	zap.Duration("since", time.Since(order.CreatedAt)),
-	//	zap.Int("order_count", len(heal.Orders)),
-	//	zap.Any("clientID", clientID),
-	//	zap.Any("heal", heal),
-	//)
+	p.log.Info("close_stale_order",
+		zap.String("m", order.Market),
+		zap.String("s", string(order.Side)),
+		zap.Duration("since", time.Since(order.CreatedAt)),
+		//zap.Int("order_count", len(heal.Orders)),
+		//zap.Any("clientID", clientID),
+		zap.Int64("order_id", order.ID),
+		zap.Float64("price", order.Price),
+	)
+	//ctx, cancel := context.WithTimeout(p.ctx, 5*time.Second)
+	//defer cancel()
+	//err = p.client.NewCancelOrderService().OrderID(order.ID).Do(ctx)
+	//if err != nil {
+	//	p.log.Error("cancel_order_error", zap.Error(err))
+	//}
 }

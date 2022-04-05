@@ -100,7 +100,6 @@ func (p *Placer) GetOpenOrders() error {
 	for _, order := range data {
 		p.openOrderMap.Store(order.ID, order)
 		p.openOrderCh <- order
-
 	}
 	return err
 }
@@ -157,5 +156,4 @@ func (p *Placer) processFills(fills *ftxapi.WsFillsEvent) {
 		return
 	}
 	p.saveFillsCh <- &data
-
 }
