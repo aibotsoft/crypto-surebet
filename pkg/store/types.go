@@ -207,7 +207,7 @@ type Fills struct {
 	Type          string    `json:"type" gorm:"not null"`
 }
 type PlaceParamsEmb struct {
-	Market   string          `json:"market" gorm:"-"`
+	Market   string          `json:"market"`
 	Side     Side            `json:"side" gorm:"not null"`
 	Price    decimal.Decimal `json:"price" gorm:"type:numeric not null"`
 	Type     OrderType       `json:"type" gorm:"not null"`

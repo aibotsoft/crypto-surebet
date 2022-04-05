@@ -285,7 +285,7 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 	if err != nil {
 		return
 	}
-	heal := p.findHeal(clientID.ID, false)
+	heal := p.FindHeal(clientID.ID, false)
 	if heal == nil {
 		return
 	}

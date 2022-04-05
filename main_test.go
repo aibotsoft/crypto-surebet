@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/aibotsoft/crypto-surebet/pkg/config"
 	"github.com/aibotsoft/crypto-surebet/pkg/logger"
 	"github.com/aibotsoft/crypto-surebet/pkg/store"
 	"github.com/aibotsoft/crypto-surebet/services/placer"
-	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
@@ -40,6 +40,6 @@ func TestMain(m *testing.M) {
 }
 
 func Test_AccountInfo(t *testing.T) {
-	err := p.GetOrdersHistory()
-	assert.NoError(t, err)
+	got := p.FindHeal(0, true)
+	fmt.Printf("%+v", got)
 }

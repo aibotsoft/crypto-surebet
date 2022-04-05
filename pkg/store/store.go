@@ -179,7 +179,7 @@ func (s *Store) SelectHealByID(id int64) (*Heal, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var heal Heal
-	err := s.db.WithContext(ctx).First(&heal, id).Error
+	err := s.db.Debug().WithContext(ctx).First(&heal, id).Error
 	return &heal, err
 }
 

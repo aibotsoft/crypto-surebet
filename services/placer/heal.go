@@ -33,7 +33,7 @@ func (p *Placer) placeHeal(h *store.Heal) {
 	p.saveHealCh <- h
 }
 
-func (p *Placer) findHeal(id int64, withOrders bool) *store.Heal {
+func (p *Placer) FindHeal(id int64, withOrders bool) *store.Heal {
 	got, ok := p.healMap.Load(id)
 	if ok {
 		return got.(*store.Heal)
@@ -51,7 +51,7 @@ func (p *Placer) findHeal(id int64, withOrders bool) *store.Heal {
 var minusOneDec = decimal.NewFromFloat(-1)
 
 func (p *Placer) reHeal(order store.Order, clientID ClientID) {
-	h := p.findHeal(clientID.ID, true)
+	h := p.FindHeal(clientID.ID, true)
 	if h == nil {
 		p.log.Error("not_found_heal", zap.Any("id", clientID.ID))
 		return
