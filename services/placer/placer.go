@@ -44,6 +44,7 @@ type Placer struct {
 	placeConfig    PlaceConfig
 	saveSbCh       chan *store.Surebet
 	saveFillsCh    chan *store.Fills
+	openOrderCh    chan store.Order
 	deleteSbCh     chan int64
 	surebetMap     sync.Map
 	healMap        sync.Map
@@ -87,6 +88,7 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 		saveSbCh:       make(chan *store.Surebet, 200),
 		saveHealCh:     make(chan *store.Heal, 200),
 		saveFillsCh:    make(chan *store.Fills, 200),
+		openOrderCh:    make(chan store.Order, 1000),
 		deleteSbCh:     make(chan int64, 200),
 		placeConfig: PlaceConfig{
 			MaxStake:          decimal.NewFromInt(cfg.Service.MaxStake),
@@ -185,6 +187,9 @@ func (p *Placer) Run() error {
 			p.printLockStatus()
 		case <-marketTick:
 			_ = p.GetMarkets()
+		case order := <-p.openOrderCh:
+			p.processOpenOrder(&order)
+
 		case <-orderTick:
 			_ = p.GetOrdersHistory()
 			_ = p.GetOpenOrders()
@@ -266,4 +271,24 @@ func (p *Placer) AccountInfo() error {
 	p.accountInfo = data
 	p.log.Debug("account_info_done", zap.Duration("elapsed", time.Since(start)), zap.Int("goroutine", runtime.NumGoroutine()))
 	return nil
+}
+
+func (p *Placer) processOpenOrder(order *store.Order) {
+	if order.ClientID != nil && time.Since(order.CreatedAt) > time.Minute {
+		clientID, err := unmarshalClientID(*order.ClientID)
+		if err != nil {
+			//p.log.Info("sdfasdf", zap.Any("", order.ClientID))
+			return
+		}
+		heal := p.findHeal(clientID.ID)
+		if heal != nil {
+			p.log.Info("",
+				zap.Duration("since", time.Since(order.CreatedAt)),
+				zap.Any("clientID", clientID),
+				zap.Any("", order),
+			)
+			return
+		}
+		p.store.FindOrders(heal)
+	}
 }

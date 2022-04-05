@@ -183,6 +183,15 @@ func (s *Store) SelectHealByID(id int64) (*Heal, error) {
 	return &heal, err
 }
 
+func (s *Store) FindOrders(heal *Heal) {
+	var orders []Order
+	err := s.db.Debug().Model(&heal).Association("Orders").Find(&orders)
+	if err != nil {
+		return
+	}
+	s.log.Info("find_orders", zap.Any("orders", orders))
+}
+
 //func (s *Store) GetWallet(symbol string) (base *Wallet, quote *Wallet) {
 //	baseStr := strings.Replace(symbol, "USDT", "", 1)
 //	gotBase, _ := s.wallet.LoadOrStore(baseStr, &Wallet{Coin: baseStr})

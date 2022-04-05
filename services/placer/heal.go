@@ -38,12 +38,12 @@ func (p *Placer) findHeal(id int64) *store.Heal {
 	if ok {
 		return got.(*store.Heal)
 	}
-	return nil
-	//heal, err := p.store.SelectHealByID(id)
-	//if err != nil {
-	//	return nil
-	//}
-	//return heal
+	//return nil
+	heal, err := p.store.SelectHealByID(id)
+	if err != nil {
+		return nil
+	}
+	return heal
 }
 func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 	h := p.findHeal(clientID.ID)
