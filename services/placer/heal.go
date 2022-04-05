@@ -43,6 +43,8 @@ func (p *Placer) findHeal(id int64) *store.Heal {
 	if err != nil {
 		return nil
 	}
+	p.store.FindHealOrders(heal)
+
 	return heal
 }
 func (p *Placer) reHeal(order store.Order, clientID ClientID) {

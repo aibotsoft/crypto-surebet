@@ -288,9 +288,9 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 	if heal == nil {
 		return
 	}
-	p.store.FindOrders(heal)
 	p.log.Info("found_heal",
 		zap.Duration("since", time.Since(order.CreatedAt)),
+		zap.Int("order_count", len(heal.Orders)),
 		zap.Any("clientID", clientID),
 		zap.Any("heal", heal),
 	)
