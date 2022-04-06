@@ -180,7 +180,7 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 	//percentage difference = 100 * |a - b| / ((a + b) / 2)
 	price := decimal.NewFromFloat(order.Price)
 	percentDiff := price.Sub(lastPrice).Abs().Div(price.Add(lastPrice).Div(d2)).Mul(d100)
-		p.log.Info("close_stale",
+	p.log.Info("close_stale",
 		zap.Int64("i", heal.ID),
 		zap.String("m", order.Market),
 		zap.String("s", string(order.Side)),
