@@ -161,7 +161,7 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 	if order.ClientID == nil {
 		return
 	}
-	if time.Since(order.CreatedAt) < reHealPeriod {
+	if time.Since(order.CreatedAt) < p.cfg.Service.ReHealPeriod {
 		return
 	}
 	clientID, err := unmarshalClientID(*order.ClientID)
@@ -173,14 +173,17 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 		return
 	}
 	p.log.Info("close_stale",
+		zap.Int64("i", heal.ID),
 		zap.String("m", order.Market),
 		zap.String("s", string(order.Side)),
+		zap.Float64("pr", order.Price),
+		zap.Float64("sz", order.Size),
+
 		zap.Duration("since", time.Since(order.CreatedAt)),
 		//zap.Int("order_count", len(heal.Orders)),
 		//zap.Any("clientID", clientID),
 		zap.Int64("order_id", order.ID),
-		zap.Float64("price", order.Price),
-		zap.Any("heal", heal),
+		//zap.Any("heal", heal),
 	)
 	ctx, cancel := context.WithTimeout(p.ctx, 5*time.Second)
 	defer cancel()

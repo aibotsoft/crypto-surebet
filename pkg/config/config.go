@@ -22,6 +22,7 @@ type Config struct {
 		//BinanceMaxStaleTime time.Duration `json:"binance_max_stale_time"`
 		SendReceiveMaxDelay time.Duration `json:"send_receive_max_delay"`
 		MaxLockTime         time.Duration `json:"max_lock_time"`
+		ReHealPeriod        time.Duration `json:"re_heal_period"`
 		DemoMode            bool          `json:"demo_mode" default:"false"`
 	} `json:"service"`
 	Zap struct {

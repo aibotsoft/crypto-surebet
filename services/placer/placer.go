@@ -138,7 +138,6 @@ func (p *Placer) Run() error {
 		p.log.Warn("get_orders_history_error", zap.Error(err))
 		//return err
 	}
-
 	err = p.GetMarkets()
 	if err != nil {
 		return err
@@ -155,27 +154,11 @@ func (p *Placer) Run() error {
 		select {
 		case sb := <-p.saveSbCh:
 			p.store.SaveSurebet(sb)
-		case t := <-p.checkBalanceCh:
-			if time.Since(lastBalanceCheck) < time.Millisecond*100 {
-				//p.log.Info("repeat_balance_check",
-				//	zap.Any("ch_time", t),
-				//	zap.Any("diff", time.Since(lastBalanceCheck)),
-				//	zap.Any("lastBalanceCheck", lastBalanceCheck),
-				//	zap.Any("t", time.Now()),
-				//)
-				continue
+		case <-p.checkBalanceCh:
+			if time.Since(lastBalanceCheck) > time.Millisecond*150 {
+				_ = p.GetBalances()
+				lastBalanceCheck = time.Now()
 			}
-			//p.log.Info("checkBalance",
-			//	zap.Any("t", t),
-			//	zap.Any("t", time.Now().UnixNano()),
-			//)
-			err := p.GetBalances()
-			if err != nil {
-				p.log.Info("get_balances_error", zap.Error(err), zap.Int64("checkBalanceTime", t))
-			}
-			lastBalanceCheck = time.Now()
-			//p.log.Info("balance_tick", zap.Int("len", len(balanceTick)))
-
 		case h := <-p.saveHealCh:
 			p.store.SaveHeal(h)
 		case orderID := <-p.deleteSbCh:
@@ -186,14 +169,13 @@ func (p *Placer) Run() error {
 		case <-balanceTick:
 			_ = p.GetBalances()
 			p.printLockStatus()
+			_ = p.GetOpenOrders()
 		case <-marketTick:
 			_ = p.GetMarkets()
 		case order := <-p.openOrderCh:
 			p.processOpenOrder(&order)
-
 		case <-orderTick:
 			_ = p.GetOrdersHistory()
-			_ = p.GetOpenOrders()
 		case <-p.ctx.Done():
 			p.Close()
 			return p.ctx.Err()
