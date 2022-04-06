@@ -177,8 +177,8 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 		return
 	}
 	lastPrice := got.(decimal.Decimal)
-	//percentage difference = 100 * |a - b| / ((a + b) / 2)
 	price := decimal.NewFromFloat(order.Price)
+	//percentage difference = 100 * |a - b| / ((a + b) / 2)
 	percentDiff := price.Sub(lastPrice).Abs().Div(price.Add(lastPrice).Div(d2)).Mul(d100)
 	p.log.Info("close_stale",
 		zap.Int64("i", heal.ID),
@@ -187,6 +187,7 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 		zap.Float64("pr", order.Price),
 		zap.Any("last_price", lastPrice),
 		zap.Any("percent_diff", percentDiff),
+		zap.Any("inc_percent", p.placeConfig.TargetProfit.Mul(d2)),
 		zap.Float64("sz", order.Size),
 		zap.Duration("since", time.Since(order.CreatedAt)),
 		//zap.Int("order_count", len(heal.Orders)),
