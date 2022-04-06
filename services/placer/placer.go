@@ -145,7 +145,7 @@ func (p *Placer) Run() error {
 	}
 	marketTick := time.Tick(time.Minute * 5)
 	orderTick := time.Tick(time.Minute * 10)
-	openOrderTick := time.Tick(p.cfg.Service.ReHealPeriod)
+	openOrderTick := time.Tick(p.cfg.Service.ReHealPeriod + time.Second)
 	var lastBalanceCheck time.Time
 	for {
 		select {
