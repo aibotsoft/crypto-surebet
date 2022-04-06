@@ -172,7 +172,10 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 	if heal == nil {
 		return
 	}
-	got, _ := p.lastFtxPriceMap.Load(order.Market)
+	got, ok := p.lastFtxPriceMap.Load(order.Market)
+	if !ok {
+		return
+	}
 	lastPrice := got.(decimal.Decimal)
 	p.log.Info("close_stale",
 		zap.Int64("i", heal.ID),
@@ -181,7 +184,6 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 		zap.Float64("pr", order.Price),
 		zap.Any("last_price", lastPrice),
 		zap.Float64("sz", order.Size),
-
 		zap.Duration("since", time.Since(order.CreatedAt)),
 		//zap.Int("order_count", len(heal.Orders)),
 		//zap.Any("clientID", clientID),
