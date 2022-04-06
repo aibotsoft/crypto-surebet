@@ -101,18 +101,18 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 	h.PlaceParams.ClientID = marshalClientID(clientID)
 	//TargetProfit*2 from original price
 	priceInc := h.PlaceParams.Price.Div(d100).Mul(p.placeConfig.TargetProfit.Mul(d2))
-	if priceInc.LessThan(h.PriceIncrement) {
-		p.log.Info("price_inc_too_low",
-			zap.Int64("i", h.ID),
-			zap.String("m", h.PlaceParams.Market),
-			zap.String("s", string(h.PlaceParams.Side)),
-			zap.Float64("calc_price_inc", priceInc.InexactFloat64()),
-			zap.Float64("market_price_inc", h.PriceIncrement.InexactFloat64()),
-			zap.Float64("price", h.PlaceParams.Price.InexactFloat64()),
-			zap.Float64("target_p", p.placeConfig.TargetProfit.InexactFloat64()),
-		)
-		priceInc = h.PriceIncrement
-	}
+	//if priceInc.LessThan(h.PriceIncrement) {
+	//	p.log.Info("price_inc_too_low",
+	//		zap.Int64("i", h.ID),
+	//		zap.String("m", h.PlaceParams.Market),
+	//		zap.String("s", string(h.PlaceParams.Side)),
+	//		zap.Float64("calc_price_inc", priceInc.InexactFloat64()),
+	//		zap.Float64("market_price_inc", h.PriceIncrement.InexactFloat64()),
+	//		zap.Float64("price", h.PlaceParams.Price.InexactFloat64()),
+	//		zap.Float64("target_p", p.placeConfig.TargetProfit.InexactFloat64()),
+	//	)
+	//	priceInc = h.PriceIncrement
+	//}
 	if h.PlaceParams.Side == store.SideSell {
 		if reverseInc {
 			priceInc = priceInc.Mul(minusOneDec)
@@ -134,12 +134,15 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 		zap.Int64("i", h.ID),
 		zap.String("m", h.PlaceParams.Market),
 		zap.String("s", string(h.PlaceParams.Side)),
+		zap.Float64("pr", h.PlaceParams.Price.InexactFloat64()),
+
 		zap.Float64("bf_size", h.FilledSize.InexactFloat64()),
 		zap.Float64("hf_size", filledSizeSum.InexactFloat64()),
 		zap.Float64("size", h.PlaceParams.Size.InexactFloat64()),
 		zap.Float64("min_size", h.MinSize.InexactFloat64()),
 		zap.Bool("is_reverse", reverseInc),
-		zap.Float64("price_inc", priceInc.InexactFloat64()),
+		zap.Float64("p_inc", priceInc.InexactFloat64()),
+		zap.Float64("mp_inc", h.PriceIncrement.InexactFloat64()),
 		zap.Int("h_count", len(h.Orders)),
 		zap.Int64("full_el", (h.Done-h.ID)/million),
 		zap.Duration("since_created", time.Since(order.CreatedAt)),
