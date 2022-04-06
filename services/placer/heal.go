@@ -65,9 +65,12 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 	var reverseInc bool
 	if time.Since(order.CreatedAt) > p.cfg.Service.ReHealPeriod {
 		p.log.Info("re_heal",
-			zap.Duration("since", time.Since(order.CreatedAt)),
-			zap.Int("order_count", len(h.Orders)),
+			zap.Int64("i", h.ID),
+			zap.String("m", order.Market),
+			zap.String("s", string(order.Side)),
 			zap.Int64("order_id", order.ID),
+			zap.Int("order_count", len(h.Orders)),
+			zap.Duration("since", time.Since(order.CreatedAt)),
 			zap.Duration("period", p.cfg.Service.ReHealPeriod),
 			//zap.Any("orders", h.Orders),
 		)

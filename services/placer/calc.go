@@ -39,6 +39,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		)
 		return nil
 	}
+	p.lastFtxPriceMap.Store(sb.FtxTicker.Symbol, sb.FtxTicker.BidPrice)
 	sb.MaxStake = p.placeConfig.MaxStake
 	sb.TargetProfit = p.placeConfig.TargetProfit
 	sb.TargetAmount = p.placeConfig.TargetAmount

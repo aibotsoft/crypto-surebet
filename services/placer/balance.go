@@ -75,10 +75,22 @@ func (p *Placer) saveBalances(data []store.Balance) {
 	p.balanceLock.Lock()
 	defer p.balanceLock.Unlock()
 	for _, b := range data {
-		p.balanceMap[b.Coin] = &store.BalanceEmb{
-			Free:     b.Free,
-			Total:    b.Total,
-			UsdValue: b.UsdValue,
+		got, ok := p.balanceMap[b.Coin]
+		if !ok {
+			p.balanceMap[b.Coin] = &store.BalanceEmb{
+				Free:     b.Free,
+				Total:    b.Total,
+				UsdValue: b.UsdValue,
+			}
+			continue
 		}
+		got.UsdValue = b.UsdValue
+		got.Total = b.Total
+		got.Free = b.Free
+		//p.balanceMap[b.Coin] = &store.BalanceEmb{
+		//	Free:     b.Free,
+		//	Total:    b.Total,
+		//	UsdValue: b.UsdValue,
+		//}
 	}
 }

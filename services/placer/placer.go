@@ -20,10 +20,6 @@ const usdt = "USDT"
 
 var d100 = decimal.RequireFromString("100")
 var d2 = decimal.RequireFromString("2")
-var d10 = decimal.RequireFromString("10")
-var reHealPeriod = time.Minute * 10
-
-//var placeCounter, fillsCounter atomic.Int64
 
 type Placer struct {
 	cfg         *config.Config
@@ -35,21 +31,22 @@ type Placer struct {
 	client      *ftxapi.Client
 	accountInfo store.Account
 
-	marketMap      map[string]*store.MarketEmb
-	marketLock     sync.Mutex
-	balanceMap     map[string]*store.BalanceEmb
-	balanceLock    sync.Mutex
-	symbolMap      sync.Map
-	ws             *ftxapi.WebsocketService
-	checkBalanceCh chan int64
-	placeConfig    PlaceConfig
-	saveSbCh       chan *store.Surebet
-	saveFillsCh    chan *store.Fills
-	openOrderCh    chan store.Order
-	deleteSbCh     chan int64
-	surebetMap     sync.Map
-	healMap        sync.Map
-	openOrderMap   sync.Map
+	marketMap       map[string]*store.MarketEmb
+	marketLock      sync.Mutex
+	balanceMap      map[string]*store.BalanceEmb
+	balanceLock     sync.Mutex
+	symbolMap       sync.Map
+	ws              *ftxapi.WebsocketService
+	checkBalanceCh  chan int64
+	placeConfig     PlaceConfig
+	saveSbCh        chan *store.Surebet
+	saveFillsCh     chan *store.Fills
+	openOrderCh     chan store.Order
+	deleteSbCh      chan int64
+	surebetMap      sync.Map
+	healMap         sync.Map
+	openOrderMap    sync.Map
+	lastFtxPriceMap sync.Map
 	//healOrderMap   sync.Map
 	saveHealCh chan *store.Heal
 }
@@ -146,9 +143,9 @@ func (p *Placer) Run() error {
 	if err != nil {
 		return err
 	}
-	balanceTick := time.Tick(time.Minute * 2)
 	marketTick := time.Tick(time.Minute * 5)
 	orderTick := time.Tick(time.Minute * 10)
+	openOrderTick := time.Tick(p.cfg.Service.ReHealPeriod)
 	var lastBalanceCheck time.Time
 	for {
 		select {
@@ -166,12 +163,11 @@ func (p *Placer) Run() error {
 			p.store.DeleteOrderByID(orderID)
 		case fills := <-p.saveFillsCh:
 			p.store.SaveFills(fills)
-		case <-balanceTick:
-			_ = p.GetBalances()
-			p.printLockStatus()
+		case <-openOrderTick:
 			_ = p.GetOpenOrders()
 		case <-marketTick:
 			_ = p.GetMarkets()
+			p.printLockStatus()
 		case order := <-p.openOrderCh:
 			p.processOpenOrder(&order)
 		case <-orderTick:
