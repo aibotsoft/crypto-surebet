@@ -98,6 +98,7 @@ func (p *Placer) reHeal(order store.Order, clientID ClientID) {
 			zap.Int64("done_id_el", (h.Done-h.ID)/million),
 			zap.Duration("since_created", time.Since(order.CreatedAt)),
 		)
+		p.checkBalanceCh <- h.Done
 		return
 	}
 
@@ -154,6 +155,7 @@ func (p *Placer) heal(order store.Order, clientID ClientID) {
 	}()
 	if order.FilledSize == 0 {
 		p.deleteSbCh <- order.ID
+		p.checkBalanceCh <- time.Now().UnixNano()
 		return
 	}
 	sb := got.(*store.Surebet)

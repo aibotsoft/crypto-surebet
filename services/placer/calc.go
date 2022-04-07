@@ -129,10 +129,6 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	sb.ProfitPriceDiff = sb.Price.Mul(profitDiff).DivRound(d100, 6)
 
 	sb.BinVolume = sb.BinPrice.Mul(sb.BinSize).Floor()
-
-	maxSizeByTotal := sb.BaseTotal.Div(sb.TargetAmount)
-	maxSizeByMaxStake := sb.MaxStake.Div(sb.PlaceParams.Price)
-	maxSizeByBinSize := sb.BinSize.Div(p.placeConfig.BinFtxVolumeRatio)
 	var maxSizeByFree decimal.Decimal
 	if sb.PlaceParams.Side == store.SideSell {
 		sb.PlaceParams.Price = sb.Price.Sub(sb.ProfitPriceDiff).Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
@@ -141,6 +137,9 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		sb.PlaceParams.Price = sb.Price.Add(sb.ProfitPriceDiff).Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
 		maxSizeByFree = sb.QuoteBalance.Free.Div(sb.PlaceParams.Price)
 	}
+	maxSizeByTotal := sb.BaseTotal.Div(sb.TargetAmount)
+	maxSizeByBinSize := sb.BinSize.Div(p.placeConfig.BinFtxVolumeRatio)
+	maxSizeByMaxStake := sb.MaxStake.Div(sb.PlaceParams.Price)
 	size := decimal.Min(
 		maxSizeByTotal,
 		maxSizeByMaxStake,
