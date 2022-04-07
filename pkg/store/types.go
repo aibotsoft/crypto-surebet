@@ -269,6 +269,7 @@ type Surebet struct {
 	BaseOpenSell      decimal.Decimal `json:"base_open_sell" gorm:"type:numeric"`
 	AvgPriceDiffRatio decimal.Decimal `json:"avg_price_diff_ratio" gorm:"type:numeric"`
 	MinVolume         decimal.Decimal `json:"min_volume" gorm:"type:numeric"`
+	MaxBy             string          `json:"max_by"`
 }
 type Heal struct {
 	CreatedAt time.Time `json:"-" gorm:"not null"`

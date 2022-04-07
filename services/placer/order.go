@@ -64,13 +64,6 @@ func (p *Placer) processOrder(order *ftxapi.WsOrdersEvent) {
 	if err != nil {
 		return
 	}
-
-	if o.PostOnly == true {
-		sumSize := o.RemainingSize + o.FilledSize
-		if o.Size > sumSize && sumSize > 0 {
-			p.log.Error("order_size_reduce", zap.Any("order", o))
-		}
-	}
 	if o.Status == store.OrderStatusClosed {
 		p.openOrderMap.Delete(o.ID)
 		o.ClosedAt = ftxapi.Int64Pointer(time.Now().UnixNano())

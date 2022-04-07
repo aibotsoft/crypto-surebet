@@ -128,49 +128,42 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	profitDiff := sb.ProfitSubAvg.Sub(sb.RequiredProfit).Div(p.placeConfig.ProfitDiffRatio)
 	sb.ProfitPriceDiff = sb.Price.Mul(profitDiff).DivRound(d100, 6)
 
-	maxSize := sb.BaseTotal.Div(sb.TargetAmount)
+	sb.BinVolume = sb.BinPrice.Mul(sb.BinSize).Floor()
 
-	var size decimal.Decimal
+	maxSizeByTotal := sb.BaseTotal.Div(sb.TargetAmount)
+	maxSizeByMaxStake := sb.MaxStake.Div(sb.PlaceParams.Price)
+	maxSizeByBinSize := sb.BinSize.Div(p.placeConfig.BinFtxVolumeRatio)
+	var maxSizeByFree decimal.Decimal
 	if sb.PlaceParams.Side == store.SideSell {
 		sb.PlaceParams.Price = sb.Price.Sub(sb.ProfitPriceDiff).Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
-		sb.BinVolume = sb.BinPrice.Mul(sb.BinTicker.AskQty).Floor()
-		size = decimal.Min(
-			maxSize,
-			sb.MaxStake.Div(sb.PlaceParams.Price),
-			sb.BaseBalance.Free,
-			sb.BinTicker.AskQty.Div(p.placeConfig.BinFtxVolumeRatio),
-		)
+		maxSizeByFree = sb.BaseBalance.Free
 	} else {
 		sb.PlaceParams.Price = sb.Price.Add(sb.ProfitPriceDiff).Div(sb.Market.PriceIncrement).Floor().Mul(sb.Market.PriceIncrement)
-		sb.BinVolume = sb.BinPrice.Mul(sb.BinTicker.BidQty).Floor()
-		size = decimal.Min(
-			maxSize,
-			sb.MaxStake.Div(sb.PlaceParams.Price),
-			sb.QuoteBalance.Free.Div(sb.PlaceParams.Price),
-			sb.BinTicker.BidQty.Div(p.placeConfig.BinFtxVolumeRatio),
-		)
+		maxSizeByFree = sb.QuoteBalance.Free.Div(sb.PlaceParams.Price)
+	}
+	size := decimal.Min(
+		maxSizeByTotal,
+		maxSizeByMaxStake,
+		maxSizeByFree,
+		maxSizeByBinSize,
+	)
+	if size.Equal(maxSizeByTotal) {
+		sb.MaxBy = "total"
+	} else if size.Equal(maxSizeByMaxStake) {
+		sb.MaxBy = "max_stake"
+	} else if size.Equal(maxSizeByFree) {
+		sb.MaxBy = "free"
+	} else if size.Equal(maxSizeByBinSize) {
+		sb.MaxBy = "bin_size"
 	}
 	sb.PlaceParams.Size = size.Div(sb.Market.MinProvideSize).Floor().Mul(sb.Market.MinProvideSize)
-	if sb.PlaceParams.Size.LessThan(sb.Market.MinProvideSize) {
-		p.log.Info("stake_low",
-			zap.String("m", sb.FtxTicker.Symbol),
-			zap.String("s", string(sb.PlaceParams.Side)),
-			zap.Float64("sz", sb.PlaceParams.Size.InexactFloat64()),
-			zap.Float64("min_size", sb.Market.MinProvideSize.InexactFloat64()),
-			zap.Float64("b_free", sb.BaseBalance.Free.InexactFloat64()),
-			zap.Int64("q_free", sb.QuoteBalance.Free.IntPart()),
-			zap.Int64("bin_vol", sb.BinVolume.IntPart()),
-			zap.Float64("clear_p", sb.ProfitSubAvg.InexactFloat64()),
-			zap.Float64("req_p", sb.RequiredProfit.InexactFloat64()),
-			zap.Float64("avg_price_diff", sb.AvgPriceDiff.InexactFloat64()),
-			zap.Float64("a_coef", sb.AmountCoef.InexactFloat64()),
-		)
-		return lock
-	}
 
 	sb.Volume = sb.PlaceParams.Size.Mul(sb.PlaceParams.Price).Floor()
 	if sb.Volume.LessThan(sb.MinVolume) {
 		p.log.Info("vol_low",
+			zap.String("by", sb.MaxBy),
+			//zap.Float64("", sb.MaxBy),
+
 			zap.String("m", sb.FtxTicker.Symbol),
 			zap.String("s", string(sb.PlaceParams.Side)),
 			zap.Float64("pr", sb.PlaceParams.Price.InexactFloat64()),
@@ -312,4 +305,20 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 //		zap.Duration("binance_max_stale_time", p.cfg.Service.BinanceMaxStaleTime),
 //		zap.Duration("ftx_st_vs_rt", time.Duration(sb.FtxTicker.ReceiveTime-sb.FtxTicker.ServerTime)))
 //	return lock
+//}
+//if sb.PlaceParams.Size.LessThan(sb.Market.MinProvideSize) {
+//p.log.Info("stake_low",
+//zap.String("m", sb.FtxTicker.Symbol),
+//zap.String("s", string(sb.PlaceParams.Side)),
+//zap.Float64("sz", sb.PlaceParams.Size.InexactFloat64()),
+//zap.Float64("min_size", sb.Market.MinProvideSize.InexactFloat64()),
+//zap.Float64("b_free", sb.BaseBalance.Free.InexactFloat64()),
+//zap.Int64("q_free", sb.QuoteBalance.Free.IntPart()),
+//zap.Int64("bin_vol", sb.BinVolume.IntPart()),
+//zap.Float64("clear_p", sb.ProfitSubAvg.InexactFloat64()),
+//zap.Float64("req_p", sb.RequiredProfit.InexactFloat64()),
+//zap.Float64("avg_price_diff", sb.AvgPriceDiff.InexactFloat64()),
+//zap.Float64("a_coef", sb.AmountCoef.InexactFloat64()),
+//)
+//return lock
 //}

@@ -17,7 +17,7 @@ func (p *Placer) placeHeal(h *store.Heal) {
 	for i := 0; i < 10; i++ {
 		resp, err := p.PlaceOrder(p.ctx, h.PlaceParams)
 		if err != nil {
-			p.log.Error("heal_error", zap.Error(err))
+			p.log.Error("heal_error", zap.Int64("i", h.ID), zap.Error(err))
 			msg := fmt.Sprintf("try:%d err:%s", i, err.Error())
 			if h.ErrorMsg != nil {
 				msg = fmt.Sprintf("%s :: %s", msg, *h.ErrorMsg)
