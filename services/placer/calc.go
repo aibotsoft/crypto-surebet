@@ -140,6 +140,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	maxSizeByTotal := sb.BaseTotal.Div(sb.TargetAmount)
 	maxSizeByBinSize := sb.BinSize.Div(p.placeConfig.BinFtxVolumeRatio)
 	maxSizeByMaxStake := sb.MaxStake.Div(sb.PlaceParams.Price)
+	sb.SizeRatio = sb.Size.Div(sb.BinSize).Add(d1)
 	size := decimal.Min(
 		maxSizeByTotal,
 		maxSizeByMaxStake,
@@ -268,6 +269,9 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		zap.Float64("o_sell", sb.BaseOpenSell.InexactFloat64()),
 		zap.Float64("ftx_sp", sb.FtxSpread.InexactFloat64()),
 		zap.Float64("bin_sp", sb.BinSpread.InexactFloat64()),
+		zap.String("by", sb.MaxBy),
+		zap.Float64("sr", sb.SizeRatio.InexactFloat64()),
+
 		//zap.Int64("place_count", placeCounter.Load()),
 		//zap.Int64("fills_count", fillsCounter.Load()),
 		zap.Int64("el", time.Duration(sb.Done-sb.BeginPlace).Milliseconds()),

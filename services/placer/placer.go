@@ -18,8 +18,9 @@ import (
 const cryptoSubject = "crypto-surebet"
 const usdt = "USDT"
 
-var d100 = decimal.RequireFromString("100")
-var d2 = decimal.RequireFromString("2")
+var d100 = decimal.NewFromInt(100)
+var d2 = decimal.NewFromInt(2)
+var d1 = decimal.NewFromInt(1)
 
 type Placer struct {
 	cfg         *config.Config
