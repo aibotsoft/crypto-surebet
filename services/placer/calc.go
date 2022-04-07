@@ -70,12 +70,16 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	if sb.BuyProfit.GreaterThan(sb.SellProfit) {
 		sb.PlaceParams.Side = store.SideBuy
 		sb.Price = sb.FtxTicker.AskPrice
+		sb.Size = sb.FtxTicker.AskQty
 		sb.BinPrice = sb.BinTicker.BidPrice
+		sb.BinSize = sb.BinTicker.BidQty
 		sb.Profit = sb.BuyProfit
 	} else {
 		sb.PlaceParams.Side = store.SideSell
 		sb.Price = sb.FtxTicker.BidPrice
+		sb.Size = sb.FtxTicker.BidQty
 		sb.BinPrice = sb.BinTicker.AskPrice
+		sb.BinSize = sb.BinTicker.AskQty
 		sb.Profit = sb.SellProfit
 	}
 	sb.ProfitSubSpread = sb.Profit.Sub(sb.FtxSpread)
@@ -247,6 +251,10 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		zap.String("s", string(sb.PlaceParams.Side)),
 		zap.Float64("pr", sb.PlaceParams.Price.InexactFloat64()),
 		zap.Float64("sz", sb.PlaceParams.Size.InexactFloat64()),
+
+		zap.Float64("size", sb.Size.InexactFloat64()),
+		zap.Float64("bsize", sb.BinSize.InexactFloat64()),
+
 		zap.Int64("v", sb.Volume.IntPart()),
 		zap.Int64("bv", sb.BinVolume.IntPart()),
 		//zap.Any("target_amount", sb.TargetAmount),

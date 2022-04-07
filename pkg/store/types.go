@@ -251,8 +251,10 @@ type Surebet struct {
 	ConnReused        bool            `json:"conn_reused"`
 	BinVolume         decimal.Decimal `json:"bin_volume" gorm:"type:numeric"`
 	Price             decimal.Decimal `json:"price" gorm:"type:numeric"`
+	Size              decimal.Decimal `json:"size" gorm:"type:numeric"`
 	ProfitSubSpread   decimal.Decimal `json:"profit_sub_spread" gorm:"type:numeric"`
 	BinPrice          decimal.Decimal `json:"bin_price" gorm:"type:numeric"`
+	BinSize           decimal.Decimal `json:"bin_size" gorm:"type:numeric"`
 	ProfitSubFee      decimal.Decimal `json:"profit_sub_fee" gorm:"type:numeric"`
 	RealFee           decimal.Decimal `json:"real_fee" gorm:"type:numeric"`
 	TargetAmount      decimal.Decimal `json:"target_amount" gorm:"type:numeric"`
