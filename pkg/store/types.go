@@ -270,6 +270,7 @@ type Surebet struct {
 	AvgPriceDiffRatio decimal.Decimal `json:"avg_price_diff_ratio" gorm:"type:numeric"`
 	MinVolume         decimal.Decimal `json:"min_volume" gorm:"type:numeric"`
 	SizeRatio         decimal.Decimal `json:"size_ratio" gorm:"type:numeric"`
+	SizeByBin         decimal.Decimal `json:"size_by_bin" gorm:"type:numeric"`
 	MaxBy             string          `json:"max_by"`
 }
 type Heal struct {
