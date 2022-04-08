@@ -219,30 +219,30 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 	}
 }
 func (p *Placer) cancelBetOrder(orderID int64, id int64) {
-	timer := time.NewTimer(time.Millisecond * 300)
+	timer := time.NewTimer(p.cfg.Service.BetCancelPeriod)
 	<-timer.C
 	start := time.Now()
 
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 10; i++ {
 		ctx, cancel := context.WithTimeout(p.ctx, 5*time.Second)
 		err := p.client.NewCancelOrderService().OrderID(orderID).Do(ctx)
 		cancel()
 		switch err {
 		case nil:
 			p.log.Info("canceled", zap.Int64("i", id), zap.Int64("order_id", orderID),
-				zap.Duration("cancel_delay", time.Millisecond*300),
+				zap.Duration("cancel_delay", p.cfg.Service.BetCancelPeriod),
 				zap.Duration("cancel_elapsed", time.Since(start)),
 			)
 			return
 		case ftxapi.OrderAlreadyClosed:
 			p.log.Info("already_canceled", zap.Int64("i", id), zap.Int64("order_id", orderID),
-				zap.Duration("cancel_delay", time.Millisecond*300),
+				zap.Duration("cancel_delay", p.cfg.Service.BetCancelPeriod),
 				zap.Duration("cancel_elapsed", time.Since(start)),
 			)
 			return
 		case ftxapi.OrderAlreadyQueued:
 			p.log.Info("queued_cancel", zap.Int64("i", id), zap.Int64("order_id", orderID),
-				zap.Duration("cancel_delay", time.Millisecond*300),
+				zap.Duration("cancel_delay", p.cfg.Service.BetCancelPeriod),
 				zap.Duration("cancel_elapsed", time.Since(start)),
 			)
 			return

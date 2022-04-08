@@ -23,6 +23,7 @@ type Config struct {
 		SendReceiveMaxDelay  time.Duration `json:"send_receive_max_delay"`
 		MaxLockTime          time.Duration `json:"max_lock_time"`
 		ReHealPeriod         time.Duration `json:"re_heal_period"`
+		BetCancelPeriod      time.Duration `json:"bet_cancel_period"`
 		DemoMode             bool          `json:"demo_mode" default:"false"`
 	} `json:"service"`
 	Zap struct {
