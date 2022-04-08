@@ -3,6 +3,7 @@ package placer
 import (
 	"context"
 	"fmt"
+	"github.com/RobinUS2/golang-moving-average"
 	"github.com/aibotsoft/crypto-surebet/pkg/config"
 	"github.com/aibotsoft/crypto-surebet/pkg/store"
 	"github.com/aibotsoft/ftx-api"
@@ -50,6 +51,7 @@ type Placer struct {
 	lastFtxPriceMap sync.Map
 	//healOrderMap   sync.Map
 	saveHealCh chan *store.Heal
+	delay      *movingaverage.MovingAverage
 }
 type PlaceConfig struct {
 	MaxStake             decimal.Decimal
@@ -91,6 +93,7 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 		saveFillsCh:    make(chan *store.Fills, 200),
 		openOrderCh:    make(chan store.Order, 1000),
 		deleteSbCh:     make(chan int64, 200),
+		delay:          movingaverage.New(10000),
 		placeConfig: PlaceConfig{
 			MaxStake:             decimal.NewFromInt(cfg.Service.MaxStake),
 			TargetProfit:         decimal.NewFromFloat(cfg.Service.TargetProfit),

@@ -14,6 +14,8 @@ import (
 
 func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	sb.StartTime = time.Now().UnixNano()
+	//sb.StartTime-sb.ID
+	p.delay.Add(float64(sb.StartTime - sb.ID))
 	sb.Market = p.FindMarket(sb.FtxTicker.Symbol)
 
 	lockTimer, cancel := context.WithTimeout(p.ctx, p.cfg.Service.MaxLockTime)
@@ -215,6 +217,8 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 			zap.Float64("p_sub_avg", sb.ProfitSubAvg.InexactFloat64()),
 			zap.Float64("profit_price_diff", sb.ProfitPriceDiff.InexactFloat64()),
 			//zap.Any("real_fee", sb.RealFee),
+			zap.Int64("avg_delay_us", int64(p.delay.Avg()/thousand)),
+
 			zap.Float64("total", sb.BaseTotal.InexactFloat64()),
 			zap.Float64("open_buy", sb.BaseOpenBuy.InexactFloat64()),
 			zap.Float64("open_sell", sb.BaseOpenSell.InexactFloat64()),
@@ -278,6 +282,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		zap.Float64("bin_sp", sb.BinSpread.InexactFloat64()),
 		zap.String("by", sb.MaxBy),
 		zap.Float64("sr", sb.SizeRatio.InexactFloat64()),
+		zap.Int64("avg_delay_us", int64(p.delay.Avg()/thousand)),
 
 		//zap.Int64("place_count", placeCounter.Load()),
 		//zap.Int64("fills_count", fillsCounter.Load()),

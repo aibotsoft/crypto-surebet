@@ -3,13 +3,13 @@ module github.com/aibotsoft/crypto-surebet
 go 1.17
 
 require (
+	github.com/RobinUS2/golang-moving-average v1.0.0
 	github.com/aibotsoft/ftx-api v0.0.0-20220303095632-8c420c5fd68a
 	github.com/cristalhq/aconfig v0.16.8
 	github.com/cristalhq/aconfig/aconfigyaml v0.16.1
 	github.com/jinzhu/copier v0.3.5
 	github.com/nats-io/nats.go v1.13.1-0.20220121202836-972a071d373d
 	github.com/shopspring/decimal v1.3.1
-	github.com/stretchr/testify v1.7.0
 	go.uber.org/zap v1.21.0
 	gorm.io/driver/postgres v1.3.1
 	gorm.io/gorm v1.23.2
@@ -17,7 +17,6 @@ require (
 
 require (
 	github.com/bitly/go-simplejson v0.5.0 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
@@ -35,7 +34,6 @@ require (
 	github.com/nats-io/nkeys v0.3.0 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20220315160706-3147a52a75dd // indirect
@@ -43,7 +41,6 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
 
 //replace github.com/aibotsoft/ftx-api => ../ftx-api

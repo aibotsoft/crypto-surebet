@@ -10,6 +10,7 @@ import (
 )
 
 const million = 1000000
+const thousand = 1000
 
 func (p *Placer) placeHeal(h *store.Heal) {
 	p.healMap.Store(h.ID, h)
