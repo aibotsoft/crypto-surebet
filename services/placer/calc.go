@@ -166,6 +166,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 			zap.String("by", sb.MaxBy),
 			//zap.Float64("", sb.MaxBy),
 			zap.Float64("sr", sb.SizeRatio.InexactFloat64()),
+			zap.Float64("size_by_bin", sb.SizeByBin.InexactFloat64()),
 
 			zap.String("m", sb.FtxTicker.Symbol),
 			zap.String("s", string(sb.PlaceParams.Side)),

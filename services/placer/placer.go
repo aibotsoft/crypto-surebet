@@ -61,6 +61,7 @@ type PlaceConfig struct {
 	AvgPriceDiffRatio decimal.Decimal
 	ProfitIncRatio    decimal.Decimal
 	MinVolume         decimal.Decimal
+	RehealThreshold   decimal.Decimal
 }
 
 func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *store.Store) (*Placer, error) {
@@ -92,6 +93,7 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 		placeConfig: PlaceConfig{
 			MaxStake:          decimal.NewFromInt(cfg.Service.MaxStake),
 			TargetProfit:      decimal.NewFromFloat(cfg.Service.TargetProfit),
+			RehealThreshold:   decimal.NewFromFloat(cfg.Service.RehealThreshold),
 			BinFtxVolumeRatio: decimal.NewFromInt(cfg.Service.BinFtxVolumeRatio),
 			TargetAmount:      decimal.NewFromInt(cfg.Service.TargetAmount),
 			ReferralRate:      decimal.NewFromFloat(cfg.Service.ReferralRate),

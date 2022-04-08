@@ -178,7 +178,7 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 	price := decimal.NewFromFloat(order.Price)
 	//percentage difference = 100 * |a - b| / ((a + b) / 2)
 	percentDiff := price.Sub(lastPrice).Abs().Div(price.Add(lastPrice).Div(d2)).Mul(d100)
-	if percentDiff.LessThanOrEqual(p.placeConfig.TargetProfit.Mul(d2)) {
+	if percentDiff.LessThanOrEqual(p.placeConfig.RehealThreshold) {
 		p.log.Info("stale_near",
 			zap.Int64("i", heal.ID),
 			zap.String("m", order.Market),
