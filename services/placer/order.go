@@ -222,18 +222,14 @@ func (p *Placer) cancelBetOrder(orderID int64, id int64) {
 	timer := time.NewTimer(time.Millisecond * 300)
 	<-timer.C
 	start := time.Now()
-	defer p.log.Info("cancel", zap.Int64("i", id), zap.Int64("order_id", orderID),
-		zap.Duration("cancel_delay", time.Millisecond*300),
-		zap.Duration("cancel_elapsed", time.Since(start)),
-	)
-	for i := 0; i < 2; i++ {
+
+	for i := 0; i < 4; i++ {
 		ctx, cancel := context.WithTimeout(p.ctx, 5*time.Second)
 		err := p.client.NewCancelOrderService().OrderID(orderID).Do(ctx)
 		cancel()
-		if err == nil {
-			return
-		}
 		switch err {
+		case nil:
+			return
 		case ftxapi.OrderAlreadyClosed:
 			return
 		case ftxapi.OrderAlreadyQueued:
@@ -241,4 +237,8 @@ func (p *Placer) cancelBetOrder(orderID int64, id int64) {
 		}
 		p.log.Error("cancel_bet_order_error", zap.Int64("i", id), zap.Int64("order_id", orderID), zap.Error(err))
 	}
+	p.log.Info("cancel", zap.Int64("i", id), zap.Int64("order_id", orderID),
+		zap.Duration("cancel_delay", time.Millisecond*300),
+		zap.Duration("cancel_elapsed", time.Since(start)),
+	)
 }

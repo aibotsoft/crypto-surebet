@@ -192,7 +192,9 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	sb.TakerFee = p.accountInfo.TakerFee
 	sb.PlaceParams.Market = sb.FtxTicker.Symbol
 	sb.PlaceParams.Type = store.OrderTypeLimit
-	sb.PlaceParams.Ioc = true
+
+	sb.PlaceParams.Ioc = false
+
 	sb.PlaceParams.PostOnly = false
 	sb.PlaceParams.ClientID = marshalClientID(ClientID{ID: sb.ID, Side: BET})
 	sb.BeginPlace = time.Now().UnixNano()
