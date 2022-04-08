@@ -186,7 +186,7 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 			zap.Float64("pr", order.Price),
 			zap.Float64("last_price", lastPrice.InexactFloat64()),
 			zap.Float64("percent_diff", percentDiff.InexactFloat64()),
-			zap.Float64("inc_percent", p.placeConfig.TargetProfit.Mul(d2).InexactFloat64()),
+			zap.Float64("inc_percent", p.placeConfig.RehealThreshold.InexactFloat64()),
 			zap.Float64("sz", order.Size),
 			zap.Duration("since", time.Since(order.CreatedAt)),
 			//zap.Int("order_count", len(heal.Orders)),

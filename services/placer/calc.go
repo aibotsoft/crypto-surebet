@@ -167,7 +167,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 
 	sb.Volume = sb.PlaceParams.Size.Mul(sb.PlaceParams.Price).Floor()
 	if sb.Volume.LessThan(sb.MinVolume) {
-		p.log.Info("vol_low",
+		p.log.Debug("vol_low",
 			zap.String("by", sb.MaxBy),
 			//zap.Float64("", sb.MaxBy),
 			zap.Float64("sr", sb.SizeRatio.InexactFloat64()),
