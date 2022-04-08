@@ -14,8 +14,17 @@ import (
 
 func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	sb.StartTime = time.Now().UnixNano()
-	//sb.StartTime-sb.ID
 	p.delay.Add(float64(sb.StartTime - sb.ID))
+	if time.Duration(sb.StartTime-sb.ID) > p.cfg.Service.SendReceiveMaxDelay {
+		p.log.Debug("lock_time_too_high",
+			zap.Int64("i", sb.ID),
+			zap.String("s", sb.FtxTicker.Symbol),
+			zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
+			zap.Duration("send_receive_max_delay", p.cfg.Service.SendReceiveMaxDelay),
+		)
+		return nil
+	}
+
 	sb.Market = p.FindMarket(sb.FtxTicker.Symbol)
 
 	lockTimer, cancel := context.WithTimeout(p.ctx, p.cfg.Service.MaxLockTime)
@@ -118,15 +127,6 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		//	//zap.Any("real_fee", sb.RealFee),
 		//	zap.Any("profit_inc", sb.ProfitInc),
 		//)
-		return lock
-	}
-	if time.Duration(sb.StartTime-sb.ID) > p.cfg.Service.SendReceiveMaxDelay {
-		p.log.Info("lock_time_too_high",
-			zap.Int64("i", sb.ID),
-			zap.String("s", sb.FtxTicker.Symbol),
-			zap.Duration("start_vs_id", time.Duration(sb.StartTime-sb.ID)),
-			zap.Duration("send_receive_max_delay", p.cfg.Service.SendReceiveMaxDelay),
-		)
 		return lock
 	}
 

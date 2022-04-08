@@ -229,16 +229,24 @@ func (p *Placer) cancelBetOrder(orderID int64, id int64) {
 		cancel()
 		switch err {
 		case nil:
+			p.log.Info("canceled", zap.Int64("i", id), zap.Int64("order_id", orderID),
+				zap.Duration("cancel_delay", time.Millisecond*300),
+				zap.Duration("cancel_elapsed", time.Since(start)),
+			)
 			return
 		case ftxapi.OrderAlreadyClosed:
+			p.log.Info("already_canceled", zap.Int64("i", id), zap.Int64("order_id", orderID),
+				zap.Duration("cancel_delay", time.Millisecond*300),
+				zap.Duration("cancel_elapsed", time.Since(start)),
+			)
 			return
 		case ftxapi.OrderAlreadyQueued:
+			p.log.Info("queued_cancel", zap.Int64("i", id), zap.Int64("order_id", orderID),
+				zap.Duration("cancel_delay", time.Millisecond*300),
+				zap.Duration("cancel_elapsed", time.Since(start)),
+			)
 			return
 		}
 		p.log.Error("cancel_bet_order_error", zap.Int64("i", id), zap.Int64("order_id", orderID), zap.Error(err))
 	}
-	p.log.Info("cancel", zap.Int64("i", id), zap.Int64("order_id", orderID),
-		zap.Duration("cancel_delay", time.Millisecond*300),
-		zap.Duration("cancel_elapsed", time.Since(start)),
-	)
 }
