@@ -215,6 +215,11 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 	defer cancel()
 	err = p.client.NewCancelOrderService().OrderID(order.ID).Do(ctx)
 	if err != nil {
-		p.log.Error("cancel_order_error", zap.Error(err))
+		p.log.Error("cancel_stale_order_error", zap.Error(err))
 	}
+}
+func (p *Placer) cancelBetOrder(orderID int64, id int64) {
+	timer := time.NewTimer(time.Millisecond * 300)
+	<-timer.C
+	p.log.Info("cancel", zap.Int64("i", id), zap.Int64("order_id", orderID), zap.Duration("timeout", time.Millisecond*300))
 }

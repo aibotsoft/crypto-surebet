@@ -247,6 +247,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 		return lock
 	}
 	sb.OrderID = order.ID
+	go p.cancelBetOrder(order.ID, sb.ID)
 	p.saveSbCh <- sb
 
 	p.log.Info("bet",
