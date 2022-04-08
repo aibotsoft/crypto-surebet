@@ -52,16 +52,17 @@ type Placer struct {
 	saveHealCh chan *store.Heal
 }
 type PlaceConfig struct {
-	MaxStake          decimal.Decimal
-	TargetProfit      decimal.Decimal
-	TargetAmount      decimal.Decimal
-	ReferralRate      decimal.Decimal
-	BinFtxVolumeRatio decimal.Decimal
-	ProfitDiffRatio   decimal.Decimal
-	AvgPriceDiffRatio decimal.Decimal
-	ProfitIncRatio    decimal.Decimal
-	MinVolume         decimal.Decimal
-	RehealThreshold   decimal.Decimal
+	MaxStake             decimal.Decimal
+	TargetProfit         decimal.Decimal
+	TargetAmount         decimal.Decimal
+	ReferralRate         decimal.Decimal
+	BinFtxVolumeRatio    decimal.Decimal
+	ProfitDiffRatio      decimal.Decimal
+	AvgPriceDiffRatio    decimal.Decimal
+	ProfitIncRatio       decimal.Decimal
+	MinVolume            decimal.Decimal
+	RehealThreshold      decimal.Decimal
+	SizeRatioMultiplayer decimal.Decimal
 }
 
 func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *store.Store) (*Placer, error) {
@@ -91,16 +92,17 @@ func NewPlacer(cfg *config.Config, log *zap.Logger, ctx context.Context, sto *st
 		openOrderCh:    make(chan store.Order, 1000),
 		deleteSbCh:     make(chan int64, 200),
 		placeConfig: PlaceConfig{
-			MaxStake:          decimal.NewFromInt(cfg.Service.MaxStake),
-			TargetProfit:      decimal.NewFromFloat(cfg.Service.TargetProfit),
-			RehealThreshold:   decimal.NewFromFloat(cfg.Service.RehealThreshold),
-			BinFtxVolumeRatio: decimal.NewFromInt(cfg.Service.BinFtxVolumeRatio),
-			TargetAmount:      decimal.NewFromInt(cfg.Service.TargetAmount),
-			ReferralRate:      decimal.NewFromFloat(cfg.Service.ReferralRate),
-			ProfitDiffRatio:   decimal.NewFromInt(cfg.Service.ProfitDiffRatio),
-			AvgPriceDiffRatio: decimal.NewFromInt(cfg.Service.AvgPriceDiffRatio),
-			ProfitIncRatio:    decimal.NewFromInt(cfg.Service.ProfitIncRatio),
-			MinVolume:         decimal.NewFromInt(cfg.Service.MinVolume),
+			MaxStake:             decimal.NewFromInt(cfg.Service.MaxStake),
+			TargetProfit:         decimal.NewFromFloat(cfg.Service.TargetProfit),
+			RehealThreshold:      decimal.NewFromFloat(cfg.Service.RehealThreshold),
+			BinFtxVolumeRatio:    decimal.NewFromInt(cfg.Service.BinFtxVolumeRatio),
+			TargetAmount:         decimal.NewFromInt(cfg.Service.TargetAmount),
+			ReferralRate:         decimal.NewFromFloat(cfg.Service.ReferralRate),
+			ProfitDiffRatio:      decimal.NewFromInt(cfg.Service.ProfitDiffRatio),
+			AvgPriceDiffRatio:    decimal.NewFromInt(cfg.Service.AvgPriceDiffRatio),
+			ProfitIncRatio:       decimal.NewFromInt(cfg.Service.ProfitIncRatio),
+			MinVolume:            decimal.NewFromInt(cfg.Service.MinVolume),
+			SizeRatioMultiplayer: decimal.NewFromInt(cfg.Service.SizeRatioMultiplayer),
 		},
 	}, nil
 }

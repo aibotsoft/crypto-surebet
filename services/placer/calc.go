@@ -50,6 +50,9 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 
 	sb.BaseBalance = p.FindBalance(sb.Market.BaseCurrency)
 	sb.BaseTotal = sb.BaseBalance.Free.Add(sb.BaseOpenBuy).Sub(sb.BaseOpenSell)
+	if sb.BaseTotal.IsZero() {
+		return lock
+	}
 	//sb.AmountCoef = sb.BaseBalance.UsdValue.Div(sb.MaxStake).Sub(sb.TargetAmount).Mul(sb.ProfitInc).Round(5)
 	sb.ProfitInc = sb.BaseOpenBuy.Add(sb.BaseOpenSell).DivRound(sb.BaseTotal, 4)
 	sb.AmountCoef = sb.ProfitInc.Mul(p.placeConfig.ProfitIncRatio).Mul(sb.TargetProfit).Round(4)
@@ -140,7 +143,7 @@ func (p *Placer) Calc(sb *store.Surebet) chan int64 {
 	maxSizeByTotal := sb.BaseTotal.Div(sb.TargetAmount)
 	maxSizeByMaxStake := sb.MaxStake.Div(sb.PlaceParams.Price)
 
-	sb.SizeRatio = sb.Size.Div(sb.BinSize).Add(d1).Round(2)
+	sb.SizeRatio = sb.Size.Div(sb.BinSize).Mul(p.placeConfig.SizeRatioMultiplayer).Add(d1).Round(1)
 	sb.SizeByBin = sb.BinSize.Div(p.placeConfig.BinFtxVolumeRatio).Div(sb.SizeRatio)
 
 	size := decimal.Min(
