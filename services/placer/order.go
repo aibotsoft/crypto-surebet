@@ -185,7 +185,7 @@ func (p *Placer) processOpenOrder(order *store.Order) {
 			zap.String("s", string(order.Side)),
 			zap.Float64("pr", order.Price),
 			zap.Float64("last_price", lastPrice.InexactFloat64()),
-			zap.Float64("percent_diff", percentDiff.InexactFloat64()),
+			zap.Float64("percent_diff", percentDiff.Round(4).InexactFloat64()),
 			zap.Float64("inc_percent", p.placeConfig.RehealThreshold.InexactFloat64()),
 			zap.Float64("sz", order.Size),
 			zap.Duration("since", time.Since(order.CreatedAt)),
@@ -227,6 +227,12 @@ func (p *Placer) cancelBetOrder(orderID int64, id int64) {
 		err := p.client.NewCancelOrderService().OrderID(orderID).Do(ctx)
 		cancel()
 		if err == nil {
+			return
+		}
+		switch err {
+		case ftxapi.OrderAlreadyClosed:
+			return
+		case ftxapi.OrderAlreadyQueued:
 			return
 		}
 		p.log.Error("cancel_bet_order_error", zap.Int64("i", id), zap.Int64("order_id", orderID), zap.Error(err))
